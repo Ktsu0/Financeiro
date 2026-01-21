@@ -1,0 +1,51 @@
+.App {
+  width: 100%;
+  min-height: 100vh;
+  background-color: #000000;
+}
+
+/* Remove any default centered text alignment */
+.App * {
+  text-align: left;
+}
+
+/* Smooth transitions for interactive elements */
+button,
+a,
+.interactive {
+  transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.3s ease;
+}
+
+button:hover,
+a:hover,
+.interactive:hover {
+  transform: translateY(-1px);
+}
+
+button:active,
+a:active,
+.interactive:active {
+  transform: translateY(0);
+}
+
+/* Table styles */
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+/* Animation for data updates */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
