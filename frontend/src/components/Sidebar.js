@@ -262,5 +262,3 @@ const Sidebar = React.memo(({ expenses, debts, summary }) => {
 });
 
 export default Sidebar;
-
-export default Sidebar;

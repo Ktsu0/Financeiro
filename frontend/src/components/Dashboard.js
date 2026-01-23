@@ -16,7 +16,9 @@ import HistoricalChart from "./HistoricalChart";
 import DebtTracking from "./DebtTracking";
 import AddTransactionModal from "./AddTransactionModal";
 import AddDebtModal from "./AddDebtModal";
+import AddDebtModal from "./AddDebtModal";
 import AddIncomeModal from "./AddIncomeModal";
+import ManageIncomesModal from "./ManageIncomesModal";
 import ExportButtons from "./ExportButtons";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -37,6 +39,7 @@ const Dashboard = () => {
   const [showAddExpense, setShowAddExpense] = useState(false);
   const [showAddDebt, setShowAddDebt] = useState(false);
   const [showAddIncome, setShowAddIncome] = useState(false);
+  const [showManageIncomes, setShowManageIncomes] = useState(false);
 
   // Optimized Fetch all data
   const fetchData = React.useCallback(async () => {
@@ -164,6 +167,32 @@ const Dashboard = () => {
     [fetchData],
   );
 
+  const handleUpdateIncome = React.useCallback(
+    async (id, updates) => {
+      try {
+        await axios.put(`${API}/incomes/${id}`, updates);
+        toast.success("Receita atualizada!");
+        fetchData();
+      } catch (error) {
+        toast.error("Erro ao atualizar receita");
+      }
+    },
+    [fetchData],
+  );
+
+  const handleDeleteIncome = React.useCallback(
+    async (id) => {
+      try {
+        await axios.delete(`${API}/incomes/${id}`);
+        toast.success("Receita excluída!");
+        fetchData();
+      } catch (error) {
+        toast.error("Erro ao excluir receita");
+      }
+    },
+    [fetchData],
+  );
+
   const handleRollMonth = React.useCallback(async () => {
     if (
       window.confirm(
@@ -197,7 +226,10 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen pb-20">
-      <Header summary={summary} />
+      <Header
+        summary={summary}
+        onEditIncomes={() => setShowManageIncomes(true)}
+      />
 
       <main className="max-w-[1600px] mx-auto px-6 lg:px-12 -mt-8 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -335,6 +367,15 @@ const Dashboard = () => {
             isOpen={showAddIncome}
             onClose={() => setShowAddIncome(false)}
             onSubmit={handleAddIncome}
+          />
+        )}
+        {showManageIncomes && (
+          <ManageIncomesModal
+            isOpen={showManageIncomes}
+            onClose={() => setShowManageIncomes(false)}
+            incomes={incomes}
+            onUpdateIncome={handleUpdateIncome}
+            onDeleteIncome={handleDeleteIncome}
           />
         )}
       </AnimatePresence>

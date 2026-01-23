@@ -61,7 +61,10 @@ const DebtTracking = React.memo(({ debts, onUpdateDebt, onDeleteDebt }) => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {debts.length === 0 ? (
-          <div className="md:col-span-2 py-12 text-center bg-white/5 rounded-3xl border border-dashed border-white/10">
+          <div className="md:col-span-2 py-16 text-center bg-white/5 rounded-3xl border border-dashed border-white/10 flex flex-col items-center justify-center">
+            <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mb-4">
+              <Target size={32} className="text-destructive opacity-50" />
+            </div>
             <p
               className="text-muted-foreground font-medium"
               data-testid="no-debts-message"

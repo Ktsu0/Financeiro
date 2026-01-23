@@ -91,16 +91,21 @@ const FinancialGrid = React.memo(
             <tbody>
               {expenses.length === 0 ? (
                 <tr>
-                  <td
-                    colSpan="6"
-                    className="text-center py-20 bg-white/5 rounded-3xl"
-                  >
-                    <p
-                      className="text-muted-foreground font-medium"
-                      data-testid="no-expenses-message"
-                    >
-                      Nenhuma despesa para exibir.
-                    </p>
+                  <td colSpan="6" className="p-8">
+                    <div className="flex flex-col items-center justify-center py-16 bg-white/5 rounded-3xl border border-dashed border-white/10">
+                      <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4">
+                        <Tag
+                          size={32}
+                          className="text-muted-foreground opacity-20"
+                        />
+                      </div>
+                      <p
+                        className="text-muted-foreground font-medium"
+                        data-testid="no-expenses-message"
+                      >
+                        Nenhuma despesa para exibir.
+                      </p>
+                    </div>
                   </td>
                 </tr>
               ) : (

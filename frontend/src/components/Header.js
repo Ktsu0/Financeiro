@@ -5,11 +5,12 @@ import {
   Wallet,
   ArrowUpRight,
   ArrowDownRight,
+  Edit2,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { formatCurrency } from "../utils";
 
-const Header = React.memo(({ summary }) => {
+const Header = React.memo(({ summary, onEditIncomes }) => {
   const containerVariants = {
     hidden: { opacity: 0, y: -20 },
     visible: {
@@ -120,8 +121,17 @@ const Header = React.memo(({ summary }) => {
                   </div>
                 </div>
               </div>
-              <div className="p-4 bg-primary text-primary-foreground rounded-2xl shadow-xl shadow-primary/20">
-                <TrendingUp size={24} strokeWidth={2.5} />
+              <div className="flex flex-col gap-2">
+                <div className="p-4 bg-primary text-primary-foreground rounded-2xl shadow-xl shadow-primary/20">
+                  <TrendingUp size={24} strokeWidth={2.5} />
+                </div>
+                <button
+                  onClick={onEditIncomes}
+                  className="p-2 bg-white/5 hover:bg-white/10 text-white/50 hover:text-white rounded-xl transition-all flex items-center justify-center"
+                  title="Gerenciar Receitas"
+                >
+                  <Edit2 size={16} />
+                </button>
               </div>
             </div>
           </motion.div>

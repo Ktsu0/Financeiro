@@ -25,6 +25,7 @@ const AddDebtModal = ({ isOpen, onClose, onSubmit }) => {
     installment_value: "",
     due_date: "",
   });
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -206,7 +207,10 @@ const AddDebtModal = ({ isOpen, onClose, onSubmit }) => {
                 />
 
                 <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                  <Popover>
+                  <Popover
+                    open={isCalendarOpen}
+                    onOpenChange={setIsCalendarOpen}
+                  >
                     <PopoverTrigger asChild>
                       <button
                         type="button"
@@ -228,6 +232,7 @@ const AddDebtModal = ({ isOpen, onClose, onSubmit }) => {
                               ...formData,
                               due_date: formatDateDisplay(date),
                             });
+                            setIsCalendarOpen(false);
                           }
                         }}
                         initialFocus

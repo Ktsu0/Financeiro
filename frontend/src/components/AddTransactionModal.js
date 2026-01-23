@@ -9,6 +9,7 @@ import {
   Repeat,
   LayoutGrid,
   CalendarDays,
+  Check,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -28,6 +29,7 @@ const AddTransactionModal = ({ isOpen, onClose, onSubmit }) => {
     status: "pending",
     is_fixed: false,
   });
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -177,7 +179,10 @@ const AddTransactionModal = ({ isOpen, onClose, onSubmit }) => {
                 />
 
                 <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                  <Popover>
+                  <Popover
+                    open={isCalendarOpen}
+                    onOpenChange={setIsCalendarOpen}
+                  >
                     <PopoverTrigger asChild>
                       <button
                         type="button"
@@ -199,6 +204,7 @@ const AddTransactionModal = ({ isOpen, onClose, onSubmit }) => {
                               ...formData,
                               due_date: formatDateDisplay(date),
                             });
+                            setIsCalendarOpen(false);
                           }
                         }}
                         initialFocus
@@ -215,42 +221,68 @@ const AddTransactionModal = ({ isOpen, onClose, onSubmit }) => {
               <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
                 Status Inicial
               </label>
-              <select
-                value={formData.status}
-                onChange={(e) =>
-                  setFormData({ ...formData, status: e.target.value })
-                }
-                className="bg-white/5 border border-white/10 text-white focus:border-primary rounded-2xl h-14 px-4 w-full outline-none"
-              >
-                <option value="pending">Pendente</option>
-                <option value="paid">Pago</option>
-              </select>
+              <div className="relative">
+                <select
+                  value={formData.status}
+                  onChange={(e) =>
+                    setFormData({ ...formData, status: e.target.value })
+                  }
+                  className="w-full h-14 bg-white/5 border border-white/10 rounded-2xl px-4 text-white appearance-none outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all cursor-pointer"
+                >
+                  <option value="pending" className="bg-[#0f172a]">
+                    Pendente
+                  </option>
+                  <option value="paid" className="bg-[#0f172a]">
+                    Pago
+                  </option>
+                </select>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 12 12"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M2.5 4.5L6 8L9.5 4.5"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </div>
+              </div>
             </div>
 
-            <div className="flex-1 flex items-center gap-4 bg-white/5 border border-white/10 rounded-2xl px-6 h-14 self-end">
-              <div className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  id="is_fixed"
-                  checked={formData.is_fixed}
-                  onChange={(e) =>
-                    setFormData({ ...formData, is_fixed: e.target.checked })
-                  }
-                  className="w-5 h-5 accent-primary rounded-lg"
-                />
+            <div
+              className="flex-1 flex items-center gap-4 bg-white/5 border border-white/10 rounded-2xl px-6 h-14 self-end hover:bg-white/[0.08] transition-all cursor-pointer"
+              onClick={() =>
+                setFormData({ ...formData, is_fixed: !formData.is_fixed })
+              }
+            >
+              <div className="flex items-center gap-3 w-full">
+                <div
+                  className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${formData.is_fixed ? "bg-primary border-primary" : "border-white/20"}`}
+                >
+                  {formData.is_fixed && (
+                    <Check size={14} className="text-black stroke-[3]" />
+                  )}
+                </div>
                 <div className="flex flex-col">
-                  <label
-                    htmlFor="is_fixed"
-                    className="text-xs font-bold text-white leading-none"
-                  >
+                  <span className="text-xs font-bold text-white leading-none">
                     Despesa Fixa
-                  </label>
+                  </span>
                   <span className="text-[8px] text-muted-foreground uppercase font-black mt-1">
                     Recorrente mensal
                   </span>
                 </div>
+                <Repeat
+                  size={16}
+                  className={`ml-auto transition-colors ${formData.is_fixed ? "text-primary" : "text-white/20"}`}
+                />
               </div>
-              <Repeat size={16} className="ml-auto text-primary opacity-40" />
             </div>
           </div>
 

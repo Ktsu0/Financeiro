@@ -23,6 +23,7 @@ const AddIncomeModal = ({ isOpen, onClose, onSubmit }) => {
     value: "",
     date: "",
   });
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -149,7 +150,10 @@ const AddIncomeModal = ({ isOpen, onClose, onSubmit }) => {
                 />
 
                 <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                  <Popover>
+                  <Popover
+                    open={isCalendarOpen}
+                    onOpenChange={setIsCalendarOpen}
+                  >
                     <PopoverTrigger asChild>
                       <button
                         type="button"
@@ -171,6 +175,7 @@ const AddIncomeModal = ({ isOpen, onClose, onSubmit }) => {
                               ...formData,
                               date: formatDateDisplay(date),
                             });
+                            setIsCalendarOpen(false);
                           }
                         }}
                         initialFocus
