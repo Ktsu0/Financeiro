@@ -12,7 +12,7 @@ import { motion } from "framer-motion";
 import { PieChart as PieIcon, Activity, Target } from "lucide-react";
 import { formatCurrency } from "../utils";
 
-const Sidebar = ({ expenses, debts, summary }) => {
+const Sidebar = React.memo(({ expenses, debts, summary }) => {
   // Calculate spending by category
   const categoryData = useMemo(
     () =>
@@ -259,6 +259,8 @@ const Sidebar = ({ expenses, debts, summary }) => {
       </motion.div>
     </aside>
   );
-};
+});
+
+export default Sidebar;
 
 export default Sidebar;

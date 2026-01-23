@@ -21,9 +21,9 @@ import { motion } from "framer-motion";
 import { BarChart3 } from "lucide-react";
 import { formatCurrency } from "../utils";
 
-const HistoricalChart = ({ expenses, incomes }) => {
-  // Generate last 6 months data
-  const generateHistoricalData = () => {
+const HistoricalChart = React.memo(({ expenses, incomes }) => {
+  // Memoized historical data to prevent re-calculation on setiap render
+  const historicalData = React.useMemo(() => {
     const data = [];
     const today = new Date();
 
@@ -81,9 +81,7 @@ const HistoricalChart = ({ expenses, incomes }) => {
     }
 
     return data;
-  };
-
-  const historicalData = generateHistoricalData();
+  }, [expenses, incomes]);
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
@@ -203,6 +201,6 @@ const HistoricalChart = ({ expenses, incomes }) => {
       </div>
     </motion.div>
   );
-};
+});
 
 export default HistoricalChart;

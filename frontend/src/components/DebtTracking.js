@@ -12,7 +12,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { formatCurrency } from "../utils";
 
-const DebtTracking = ({ debts, onUpdateDebt, onDeleteDebt }) => {
+const DebtTracking = React.memo(({ debts, onUpdateDebt, onDeleteDebt }) => {
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
 
@@ -245,6 +245,6 @@ const DebtTracking = ({ debts, onUpdateDebt, onDeleteDebt }) => {
       </div>
     </div>
   );
-};
+});
 
 export default DebtTracking;

@@ -9,7 +9,7 @@ import {
 import { motion } from "framer-motion";
 import { formatCurrency } from "../utils";
 
-const Header = ({ summary }) => {
+const Header = React.memo(({ summary }) => {
   const containerVariants = {
     hidden: { opacity: 0, y: -20 },
     visible: {
@@ -169,6 +169,6 @@ const Header = ({ summary }) => {
       </div>
     </header>
   );
-};
+});
 
 export default Header;

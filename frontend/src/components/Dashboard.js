@@ -38,10 +38,12 @@ const Dashboard = () => {
   const [showAddDebt, setShowAddDebt] = useState(false);
   const [showAddIncome, setShowAddIncome] = useState(false);
 
-  // Fetch all data
-  const fetchData = async () => {
+  // Optimized Fetch all data
+  const fetchData = React.useCallback(async () => {
     try {
-      setLoading(true);
+      // Don't set global loading if we already have data (silent refresh)
+      if (expenses.length === 0) setLoading(true);
+
       const [expensesRes, debtsRes, incomesRes, summaryRes] = await Promise.all(
         [
           axios.get(`${API}/expenses`),
@@ -61,87 +63,108 @@ const Dashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [expenses.length]);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
-  // Handlers for Add/Update/Delete (keeping original logic)
-  const handleAddExpense = async (expenseData) => {
-    try {
-      await axios.post(`${API}/expenses`, expenseData);
-      toast.success("Despesa adicionada com sucesso!");
-      fetchData();
-      setShowAddExpense(false);
-    } catch (error) {
-      toast.error("Erro ao adicionar despesa");
-    }
-  };
+  // Memoized Handlers
+  const handleAddExpense = React.useCallback(
+    async (expenseData) => {
+      try {
+        await axios.post(`${API}/expenses`, expenseData);
+        toast.success("Despesa adicionada com sucesso!");
+        fetchData();
+        setShowAddExpense(false);
+      } catch (error) {
+        toast.error("Erro ao adicionar despesa");
+      }
+    },
+    [fetchData],
+  );
 
-  const handleUpdateExpense = async (id, updates) => {
-    try {
-      await axios.put(`${API}/expenses/${id}`, updates);
-      toast.success("Despesa atualizada!");
-      fetchData();
-    } catch (error) {
-      toast.error("Erro ao atualizar despesa");
-    }
-  };
+  const handleUpdateExpense = React.useCallback(
+    async (id, updates) => {
+      try {
+        await axios.put(`${API}/expenses/${id}`, updates);
+        toast.success("Despesa atualizada!");
+        fetchData();
+      } catch (error) {
+        toast.error("Erro ao atualizar despesa");
+      }
+    },
+    [fetchData],
+  );
 
-  const handleDeleteExpense = async (id) => {
-    try {
-      await axios.delete(`${API}/expenses/${id}`);
-      toast.success("Despesa excluída!");
-      fetchData();
-    } catch (error) {
-      toast.error("Erro ao excluir despesa");
-    }
-  };
+  const handleDeleteExpense = React.useCallback(
+    async (id) => {
+      try {
+        await axios.delete(`${API}/expenses/${id}`);
+        toast.success("Despesa excluída!");
+        fetchData();
+      } catch (error) {
+        toast.error("Erro ao excluir despesa");
+      }
+    },
+    [fetchData],
+  );
 
-  const handleAddDebt = async (debtData) => {
-    try {
-      await axios.post(`${API}/debts`, debtData);
-      toast.success("Dívida adicionada com sucesso!");
-      fetchData();
-      setShowAddDebt(false);
-    } catch (error) {
-      toast.error("Erro ao adicionar dívida");
-    }
-  };
+  const handleAddDebt = React.useCallback(
+    async (debtData) => {
+      try {
+        await axios.post(`${API}/debts`, debtData);
+        toast.success("Dívida adicionada com sucesso!");
+        fetchData();
+        setShowAddDebt(false);
+      } catch (error) {
+        toast.error("Erro ao adicionar dívida");
+      }
+    },
+    [fetchData],
+  );
 
-  const handleUpdateDebt = async (id, updates) => {
-    try {
-      await axios.put(`${API}/debts/${id}`, updates);
-      toast.success("Dívida atualizada!");
-      fetchData();
-    } catch (error) {
-      toast.error("Erro ao atualizar dívida");
-    }
-  };
+  const handleUpdateDebt = React.useCallback(
+    async (id, updates) => {
+      try {
+        await axios.put(`${API}/debts/${id}`, updates);
+        toast.success("Dívida atualizada!");
+        fetchData();
+      } catch (error) {
+        toast.error("Erro ao atualizar dívida");
+      }
+    },
+    [fetchData],
+  );
 
-  const handleDeleteDebt = async (id) => {
-    try {
-      await axios.delete(`${API}/debts/${id}`);
-      toast.success("Dívida excluída!");
-      fetchData();
-    } catch (error) {
-      toast.error("Erro ao excluir dívida");
-    }
-  };
+  const handleDeleteDebt = React.useCallback(
+    async (id) => {
+      try {
+        await axios.delete(`${API}/debts/${id}`);
+        toast.success("Dívida excluída!");
+        fetchData();
+      } catch (error) {
+        toast.error("Erro ao excluir dívida");
+      }
+    },
+    [fetchData],
+  );
 
-  const handleAddIncome = async (incomeData) => {
-    try {
-      await axios.post(`${API}/incomes`, incomeData);
-      toast.success("Receita adicionada com sucesso!");
-      fetchData();
-      setShowAddIncome(false);
-    } catch (error) {
-      toast.error("Erro ao adicionar receita");
-    }
-  };
+  const handleAddIncome = React.useCallback(
+    async (incomeData) => {
+      try {
+        await axios.post(`${API}/incomes`, incomeData);
+        toast.success("Receita adicionada com sucesso!");
+        fetchData();
+        setShowAddIncome(false);
+      } catch (error) {
+        toast.error("Erro ao adicionar receita");
+      }
+    },
+    [fetchData],
+  );
 
-  const handleRollMonth = async () => {
+  const handleRollMonth = React.useCallback(async () => {
     if (
       window.confirm(
         "Isso irá criar cópias de todas as despesas fixas e receitas para o próximo mês. Deseja continuar?",
@@ -155,7 +178,7 @@ const Dashboard = () => {
         toast.error("Erro ao processar próximo mês");
       }
     }
-  };
+  }, [fetchData]);
 
   if (loading) {
     return (
