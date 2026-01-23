@@ -2,10 +2,10 @@
 module.exports = {
   darkMode: ["class"],
   content: [
-    './pages/**/*.{js,jsx}',
-    './components/**/*.{js,jsx}',
-    './app/**/*.{js,jsx}',
-    './src/**/*.{js,jsx}',
+    "./pages/**/*.{js,jsx}",
+    "./components/**/*.{js,jsx}",
+    "./app/**/*.{js,jsx}",
+    "./src/**/*.{js,jsx}",
   ],
   prefix: "",
   theme: {
@@ -18,44 +18,44 @@ module.exports = {
     },
     extend: {
       colors: {
-        border: "#1E293B",
-        input: "#112240",
-        ring: "#00FF94",
-        background: "#000000",
-        foreground: "#E2E8F0",
+        border: "hsl(var(--border))",
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
         primary: {
-          DEFAULT: "#00FF94",
-          foreground: "#000000",
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
         },
         secondary: {
-          DEFAULT: "#112240",
-          foreground: "#00FF94",
+          DEFAULT: "hsl(var(--secondary))",
+          foreground: "hsl(var(--secondary-foreground))",
         },
         destructive: {
-          DEFAULT: "#FF0055",
-          foreground: "#FFFFFF",
+          DEFAULT: "hsl(var(--destructive))",
+          foreground: "hsl(var(--destructive-foreground))",
         },
         muted: {
-          DEFAULT: "#020c1b",
-          foreground: "#8892b0",
+          DEFAULT: "hsl(var(--muted))",
+          foreground: "hsl(var(--muted-foreground))",
         },
         accent: {
-          DEFAULT: "#112240",
-          foreground: "#00FF94",
+          DEFAULT: "hsl(var(--accent))",
+          foreground: "hsl(var(--accent-foreground))",
         },
         popover: {
-          DEFAULT: "#0A192F",
-          foreground: "#E2E8F0",
+          DEFAULT: "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))",
         },
         card: {
-          DEFAULT: "#0A192F",
-          foreground: "#E2E8F0",
+          DEFAULT: "hsl(var(--card))",
+          foreground: "hsl(var(--card-foreground))",
         },
       },
       fontFamily: {
-        heading: ['Manrope', 'sans-serif'],
-        body: ['Inter', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
+        heading: ['"Plus Jakarta Sans"', "sans-serif"],
+        body: ["Inter", "sans-serif"],
+        mono: ['"JetBrains Mono"', "monospace"],
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -79,4 +79,4 @@ module.exports = {
     },
   },
   plugins: [require("tailwindcss-animate")],
-}
+};

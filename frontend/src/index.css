@@ -1,8 +1,42 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap");
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 142.1 70.6% 45.3%;
+    --primary-foreground: 144.4 61.4% 10.5%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 142.1 70.6% 45.3%;
+
+    --radius: 1rem;
+  }
+}
 
 * {
   margin: 0;
@@ -12,47 +46,54 @@
 
 body {
   margin: 0;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    "Roboto",
+    sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #000000;
-  color: #E2E8F0;
+  background-color: hsl(var(--background));
+  background-image:
+    radial-gradient(at 0% 0%, rgba(34, 197, 94, 0.05) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(59, 130, 246, 0.05) 0px, transparent 50%);
+  color: hsl(var(--foreground));
   overflow-x: hidden;
+  min-height: 100vh;
 }
 
 code {
-  font-family: 'JetBrains Mono', source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+  font-family:
+    "JetBrains Mono", source-code-pro, Menlo, Monaco, Consolas, "Courier New",
+    monospace;
 }
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #000000;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1E293B;
-  border-radius: 4px;
+  background: hsl(var(--secondary));
+  border-radius: 5px;
+  border: 2px solid hsl(var(--background));
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+  background: hsl(var(--muted-foreground));
 }
 
-/* Remove default selection color */
+/* Selection color */
 ::selection {
-  background: #00FF94;
-  color: #000000;
-}
-
-@layer base {
-  :root {
-    --radius: 0.75rem;
-  }
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
 }
 
 @layer base {
@@ -64,22 +105,31 @@ code {
   }
 }
 
-/* Glassmorphism effect */
+/* Premium Card Effects */
 .glass-card {
-  background: rgba(10, 25, 47, 0.8);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  @apply bg-card/60 backdrop-blur-xl border border-white/5 shadow-2xl transition-all duration-300;
 }
 
-/* Neon glow effects */
-.neon-green {
-  box-shadow: 0 0 20px rgba(0, 255, 148, 0.15);
+.glass-card:hover {
+  @apply border-white/10 bg-card/80;
 }
 
-.neon-red {
-  box-shadow: 0 0 20px rgba(255, 0, 85, 0.15);
+.neon-glow {
+  box-shadow: 0 0 40px -10px hsl(var(--primary) / 0.3);
+}
+
+.neon-glow-red {
+  box-shadow: 0 0 40px -10px hsl(var(--destructive) / 0.3);
+}
+
+/* Typography Enhancements */
+h1,
+h2,
+h3,
+h4,
+.font-heading {
+  font-family: "Plus Jakarta Sans", sans-serif;
+  letter-spacing: -0.02em;
 }
 
 /* Input focus effects */
@@ -87,8 +137,28 @@ input:focus,
 textarea:focus,
 select:focus {
   outline: none;
-  border-color: #00FF94;
-  box-shadow: 0 0 0 1px #00FF94;
+  @apply ring-2 ring-primary/20 border-primary/50;
+}
+
+/* Buttons */
+.btn-base {
+  @apply flex items-center justify-center gap-2 px-8 h-11 rounded-full font-bold text-sm tracking-tight transition-all duration-200 active:scale-95 hover:scale-[1.02] whitespace-nowrap;
+}
+
+.btn-primary {
+  @apply btn-base bg-primary text-primary-foreground shadow-lg shadow-primary/20 hover:shadow-primary/40;
+}
+
+.btn-secondary {
+  @apply btn-base bg-white/5 border border-white/10 text-white hover:bg-white/10;
+}
+
+.btn-destructive {
+  @apply btn-base bg-destructive/10 text-destructive border border-destructive/10 hover:bg-destructive hover:text-white;
+}
+
+.btn-ghost {
+  @apply btn-base bg-transparent text-muted-foreground hover:bg-white/5 hover:text-white;
 }
 
 /* Recharts customization */
@@ -97,8 +167,36 @@ select:focus {
 }
 
 .recharts-default-tooltip {
-  background-color: #0A192F !important;
-  border: 1px solid #1E293B !important;
-  border-radius: 8px !important;
-  color: #E2E8F0 !important;
+  @apply !bg-card/90 !backdrop-blur-md !border-white/10 !rounded-xl !p-3 !shadow-2xl !text-foreground !important;
+}
+
+/* Subtle Shimmer Effect */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.05),
+    transparent
+  );
+  animation: shimmer 2s infinite;
 }

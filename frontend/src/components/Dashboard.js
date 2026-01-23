@@ -1,17 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { format, parse, subMonths } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { toast } from 'sonner';
-import Header from './Header';
-import FinancialGrid from './FinancialGrid';
-import Sidebar from './Sidebar';
-import HistoricalChart from './HistoricalChart';
-import DebtTracking from './DebtTracking';
-import AddTransactionModal from './AddTransactionModal';
-import AddDebtModal from './AddDebtModal';
-import AddIncomeModal from './AddIncomeModal';
-import ExportButtons from './ExportButtons';
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import { toast } from "sonner";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Plus,
+  Minus,
+  CreditCard,
+  LayoutGrid,
+  CalendarRange,
+} from "lucide-react";
+import Header from "./Header";
+import FinancialGrid from "./FinancialGrid";
+import Sidebar from "./Sidebar";
+import HistoricalChart from "./HistoricalChart";
+import DebtTracking from "./DebtTracking";
+import AddTransactionModal from "./AddTransactionModal";
+import AddDebtModal from "./AddDebtModal";
+import AddIncomeModal from "./AddIncomeModal";
+import ExportButtons from "./ExportButtons";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -25,7 +31,7 @@ const Dashboard = () => {
     total_expenses: 0,
     total_debt: 0,
     total_committed: 0,
-    available_salary: 0
+    available_salary: 0,
   });
   const [loading, setLoading] = useState(true);
   const [showAddExpense, setShowAddExpense] = useState(false);
@@ -36,20 +42,22 @@ const Dashboard = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [expensesRes, debtsRes, incomesRes, summaryRes] = await Promise.all([
-        axios.get(`${API}/expenses`),
-        axios.get(`${API}/debts`),
-        axios.get(`${API}/incomes`),
-        axios.get(`${API}/summary`)
-      ]);
-      
+      const [expensesRes, debtsRes, incomesRes, summaryRes] = await Promise.all(
+        [
+          axios.get(`${API}/expenses`),
+          axios.get(`${API}/debts`),
+          axios.get(`${API}/incomes`),
+          axios.get(`${API}/summary`),
+        ],
+      );
+
       setExpenses(expensesRes.data);
       setDebts(debtsRes.data);
       setIncomes(incomesRes.data);
       setSummary(summaryRes.data);
     } catch (error) {
-      console.error('Error fetching data:', error);
-      toast.error('Erro ao carregar dados');
+      console.error("Error fetching data:", error);
+      toast.error("Erro ao carregar dados");
     } finally {
       setLoading(false);
     }
@@ -59,200 +67,254 @@ const Dashboard = () => {
     fetchData();
   }, []);
 
-  // Add expense
+  // Handlers for Add/Update/Delete (keeping original logic)
   const handleAddExpense = async (expenseData) => {
     try {
       await axios.post(`${API}/expenses`, expenseData);
-      toast.success('Despesa adicionada com sucesso!');
+      toast.success("Despesa adicionada com sucesso!");
       fetchData();
       setShowAddExpense(false);
     } catch (error) {
-      console.error('Error adding expense:', error);
-      toast.error('Erro ao adicionar despesa');
+      toast.error("Erro ao adicionar despesa");
     }
   };
 
-  // Update expense
   const handleUpdateExpense = async (id, updates) => {
     try {
       await axios.put(`${API}/expenses/${id}`, updates);
-      toast.success('Despesa atualizada!');
+      toast.success("Despesa atualizada!");
       fetchData();
     } catch (error) {
-      console.error('Error updating expense:', error);
-      toast.error('Erro ao atualizar despesa');
+      toast.error("Erro ao atualizar despesa");
     }
   };
 
-  // Delete expense
   const handleDeleteExpense = async (id) => {
     try {
       await axios.delete(`${API}/expenses/${id}`);
-      toast.success('Despesa excluída!');
+      toast.success("Despesa excluída!");
       fetchData();
     } catch (error) {
-      console.error('Error deleting expense:', error);
-      toast.error('Erro ao excluir despesa');
+      toast.error("Erro ao excluir despesa");
     }
   };
 
-  // Add debt
   const handleAddDebt = async (debtData) => {
     try {
       await axios.post(`${API}/debts`, debtData);
-      toast.success('Dívida adicionada com sucesso!');
+      toast.success("Dívida adicionada com sucesso!");
       fetchData();
       setShowAddDebt(false);
     } catch (error) {
-      console.error('Error adding debt:', error);
-      toast.error('Erro ao adicionar dívida');
+      toast.error("Erro ao adicionar dívida");
     }
   };
 
-  // Update debt
   const handleUpdateDebt = async (id, updates) => {
     try {
       await axios.put(`${API}/debts/${id}`, updates);
-      toast.success('Dívida atualizada!');
+      toast.success("Dívida atualizada!");
       fetchData();
     } catch (error) {
-      console.error('Error updating debt:', error);
-      toast.error('Erro ao atualizar dívida');
+      toast.error("Erro ao atualizar dívida");
     }
   };
 
-  // Delete debt
   const handleDeleteDebt = async (id) => {
     try {
       await axios.delete(`${API}/debts/${id}`);
-      toast.success('Dívida excluída!');
+      toast.success("Dívida excluída!");
       fetchData();
     } catch (error) {
-      console.error('Error deleting debt:', error);
-      toast.error('Erro ao excluir dívida');
+      toast.error("Erro ao excluir dívida");
     }
   };
 
-  // Add income
   const handleAddIncome = async (incomeData) => {
     try {
       await axios.post(`${API}/incomes`, incomeData);
-      toast.success('Receita adicionada com sucesso!');
+      toast.success("Receita adicionada com sucesso!");
       fetchData();
       setShowAddIncome(false);
     } catch (error) {
-      console.error('Error adding income:', error);
-      toast.error('Erro ao adicionar receita');
+      toast.error("Erro ao adicionar receita");
     }
   };
 
-  // Update income
-  const handleUpdateIncome = async (id, updates) => {
-    try {
-      await axios.put(`${API}/incomes/${id}`, updates);
-      toast.success('Receita atualizada!');
-      fetchData();
-    } catch (error) {
-      console.error('Error updating income:', error);
-      toast.error('Erro ao atualizar receita');
-    }
-  };
-
-  // Delete income
-  const handleDeleteIncome = async (id) => {
-    try {
-      await axios.delete(`${API}/incomes/${id}`);
-      toast.success('Receita excluída!');
-      fetchData();
-    } catch (error) {
-      console.error('Error deleting income:', error);
-      toast.error('Erro ao excluir receita');
+  const handleRollMonth = async () => {
+    if (
+      window.confirm(
+        "Isso irá criar cópias de todas as despesas fixas e receitas para o próximo mês. Deseja continuar?",
+      )
+    ) {
+      try {
+        const response = await axios.post(`${API}/roll-month`);
+        toast.success(response.data.message);
+        fetchData();
+      } catch (error) {
+        toast.error("Erro ao processar próximo mês");
+      }
     }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-primary text-xl font-heading">Carregando...</div>
+      <div className="min-h-screen flex flex-col items-center justify-center space-y-4">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full"
+        />
+        <div className="text-white/50 text-xl font-heading animate-pulse">
+          Iniciando Dashboard...
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen pb-20">
       <Header summary={summary} />
-      
-      <div className="max-w-[1600px] mx-auto px-6 lg:px-12 py-8">
-        <div className="flex gap-6">
-          {/* Main Content */}
-          <div className="flex-1 space-y-6">
-            {/* Quick Action Buttons */}
-            <div className="flex gap-4 flex-wrap">
-              <button
-                data-testid="add-income-btn"
-                onClick={() => setShowAddIncome(true)}
-                className="bg-primary text-primary-foreground hover:bg-[#00CC76] font-bold shadow-[0_0_15px_rgba(0,255,148,0.4)] hover:scale-105 active:scale-95 rounded-full px-6 py-2 font-heading"
+
+      <main className="max-w-[1600px] mx-auto px-6 lg:px-12 -mt-8 relative z-10">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* Main Space */}
+          <div className="lg:col-span-8 space-y-8">
+            {/* Action Bar */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex flex-col sm:flex-row items-center justify-between gap-6 glass-card p-6 rounded-3xl"
+            >
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-white/5 rounded-2xl">
+                  <LayoutGrid className="text-muted-foreground" size={24} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">
+                    Ações Rápidas
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Gerencie seus fluxos financeiros
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-3 flex-wrap justify-center sm:justify-end flex-1">
+                <button
+                  onClick={handleRollMonth}
+                  className="btn-base bg-purple-500/10 text-purple-500 border border-purple-500/20 hover:bg-purple-500 hover:text-white"
+                  title="Gera automaticamente entradas do próximo mês"
+                >
+                  <CalendarRange size={18} strokeWidth={2.5} />
+                  <span>Próximo Mês</span>
+                </button>
+                <button
+                  onClick={() => setShowAddIncome(true)}
+                  className="btn-primary"
+                >
+                  <Plus size={18} strokeWidth={3} />
+                  <span>Receita</span>
+                </button>
+                <button
+                  onClick={() => setShowAddExpense(true)}
+                  className="btn-secondary"
+                >
+                  <Minus size={18} strokeWidth={3} />
+                  <span>Despesa</span>
+                </button>
+                <button
+                  onClick={() => setShowAddDebt(true)}
+                  className="btn-destructive"
+                >
+                  <CreditCard size={18} strokeWidth={2.5} />
+                  <span>Dívida</span>
+                </button>
+              </div>
+            </motion.div>
+
+            {/* Export & Controls */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="px-8"
+            >
+              <ExportButtons
+                expenses={expenses}
+                debts={debts}
+                incomes={incomes}
+              />
+            </motion.div>
+
+            {/* Charts Section */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.2 }}
+            >
+              <HistoricalChart expenses={expenses} incomes={incomes} />
+            </motion.div>
+
+            {/* Grids */}
+            <div className="space-y-8">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
               >
-                + Adicionar Receita
-              </button>
-              <button
-                data-testid="add-expense-btn"
-                onClick={() => setShowAddExpense(true)}
-                className="bg-transparent border border-destructive text-destructive hover:bg-destructive/10 font-medium rounded-full px-6 py-2 font-heading"
+                <FinancialGrid
+                  expenses={expenses}
+                  onUpdateExpense={handleUpdateExpense}
+                  onDeleteExpense={handleDeleteExpense}
+                />
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
               >
-                + Adicionar Despesa
-              </button>
-              <button
-                data-testid="add-debt-btn"
-                onClick={() => setShowAddDebt(true)}
-                className="bg-transparent border border-destructive text-destructive hover:bg-destructive/10 font-medium rounded-full px-6 py-2 font-heading"
-              >
-                + Adicionar Dívida
-              </button>
+                <DebtTracking
+                  debts={debts}
+                  onUpdateDebt={handleUpdateDebt}
+                  onDeleteDebt={handleDeleteDebt}
+                />
+              </motion.div>
             </div>
-
-            {/* Export Buttons */}
-            <ExportButtons expenses={expenses} debts={debts} incomes={incomes} />
-
-            {/* Historical Chart */}
-            <HistoricalChart expenses={expenses} incomes={incomes} />
-
-            {/* Financial Grid */}
-            <FinancialGrid
-              expenses={expenses}
-              onUpdateExpense={handleUpdateExpense}
-              onDeleteExpense={handleDeleteExpense}
-            />
-
-            {/* Debt Tracking */}
-            <DebtTracking
-              debts={debts}
-              onUpdateDebt={handleUpdateDebt}
-              onDeleteDebt={handleDeleteDebt}
-            />
           </div>
 
-          {/* Sidebar */}
-          <Sidebar expenses={expenses} debts={debts} summary={summary} />
+          {/* Sidebar Area */}
+          <div className="lg:col-span-4 sticky top-8">
+            <Sidebar expenses={expenses} debts={debts} summary={summary} />
+          </div>
         </div>
-      </div>
+      </main>
 
-      {/* Modals */}
-      <AddTransactionModal
-        isOpen={showAddExpense}
-        onClose={() => setShowAddExpense(false)}
-        onSubmit={handleAddExpense}
-      />
-      <AddDebtModal
-        isOpen={showAddDebt}
-        onClose={() => setShowAddDebt(false)}
-        onSubmit={handleAddDebt}
-      />
-      <AddIncomeModal
-        isOpen={showAddIncome}
-        onClose={() => setShowAddIncome(false)}
-        onSubmit={handleAddIncome}
-      />
+      {/* Modals with AnimatePresence */}
+      <AnimatePresence>
+        {showAddExpense && (
+          <AddTransactionModal
+            isOpen={showAddExpense}
+            onClose={() => setShowAddExpense(false)}
+            onSubmit={handleAddExpense}
+          />
+        )}
+        {showAddDebt && (
+          <AddDebtModal
+            isOpen={showAddDebt}
+            onClose={() => setShowAddDebt(false)}
+            onSubmit={handleAddDebt}
+          />
+        )}
+        {showAddIncome && (
+          <AddIncomeModal
+            isOpen={showAddIncome}
+            onClose={() => setShowAddIncome(false)}
+            onSubmit={handleAddIncome}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };

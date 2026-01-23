@@ -241,6 +241,81 @@ async def export_csv():
         "incomes": incomes
     }
 
+# Automation endpoint
+@api_router.post("/roll-month")
+async def roll_month():
+    expenses = read_json_file(EXPENSES_FILE)
+    debts = read_json_file(DEBTS_FILE)
+    incomes = read_json_file(INCOMES_FILE)
+    
+    new_expenses = []
+    # Clone fixed expenses
+    fixed_expenses = [exp for exp in expenses if exp.get('is_fixed')]
+    for exp in fixed_expenses:
+        try:
+            d, m, y = map(int, exp['due_date'].split('/'))
+            # Simple month increment
+            new_m = m + 1
+            new_y = y
+            if new_m > 12:
+                new_m = 1
+                new_y += 1
+            
+            new_due_date = f"{d:02d}/{new_m:02d}/{new_y}"
+            
+            new_exp = exp.copy()
+            new_exp['id'] = str(uuid.uuid4())
+            new_exp['due_date'] = new_due_date
+            new_exp['status'] = 'pending'
+            new_exp['created_at'] = datetime.now(timezone.utc).isoformat()
+            new_expenses.append(new_exp)
+        except Exception as e:
+            logger.error(f"Error rolling expense {exp['name']}: {e}")
+
+    # Process debts: Add installment to paid_amount
+    updated_debts = []
+    for debt in debts:
+        new_paid = min(debt['paid_amount'] + debt['installment_value'], debt['total_amount'])
+        debt['paid_amount'] = new_paid
+        updated_debts.append(debt)
+        
+    # Process incomes: Assume all current incomes are recurring for simplicity or user can delete later
+    # Alternatively, just clone them to next month
+    new_incomes = []
+    for inc in incomes:
+        try:
+            d, m, y = map(int, inc['date'].split('/'))
+            new_m = m + 1
+            new_y = y
+            if new_m > 12:
+                new_m = 1
+                new_y += 1
+            new_date = f"{d:02d}/{new_m:02d}/{new_y}"
+            
+            new_inc = inc.copy()
+            new_inc['id'] = str(uuid.uuid4())
+            new_inc['date'] = new_date
+            new_inc['created_at'] = datetime.now(timezone.utc).isoformat()
+            new_incomes.append(new_inc)
+        except Exception as e:
+            logger.error(f"Error rolling income {inc['name']}: {e}")
+
+    # Save everything (appending new ones, updating debts)
+    expenses.extend(new_expenses)
+    write_json_file(EXPENSES_FILE, expenses)
+    
+    write_json_file(DEBTS_FILE, updated_debts)
+    
+    incomes.extend(new_incomes)
+    write_json_file(INCOMES_FILE, incomes)
+    
+    return {
+        "message": "Próximo mês iniciado com sucesso!",
+        "added_expenses": len(new_expenses),
+        "updated_debts": len(updated_debts),
+        "added_incomes": len(new_incomes)
+    }
+
 # Include the router in the main app
 app.include_router(api_router)
 
@@ -258,3 +333,7 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
