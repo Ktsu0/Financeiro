@@ -1,0 +1,10 @@
+{
+  "name": "financeiro-backend",
+  "version": "1.0.0",
+  "description": "Backend logic for Financeiro application",
+  "scripts": {
+    "start": "python server.py"
+  },
+  "author": "",
+  "license": "ISC"
+}

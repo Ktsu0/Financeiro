@@ -1,7 +1,6 @@
 import React from "react";
 import { Download, FileText, Table } from "lucide-react";
-import jsPDF from "jspdf";
-import "jspdf-autotable";
+// Imports removed for dynamic loading
 import { motion } from "framer-motion";
 import { formatCurrency } from "../utils";
 
@@ -70,7 +69,9 @@ const ExportButtons = ({ expenses, debts, incomes }) => {
     document.body.removeChild(link);
   };
 
-  const exportToPDF = () => {
+  const exportToPDF = async () => {
+    const { default: jsPDF } = await import("jspdf");
+    await import("jspdf-autotable");
     const doc = new jsPDF();
 
     // Title

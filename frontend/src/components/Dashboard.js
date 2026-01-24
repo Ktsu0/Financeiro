@@ -1,6 +1,4 @@
-import React, { useState, useEffect } from "react";
-import axios from "axios";
-import { toast } from "sonner";
+import React, { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus,
@@ -9,6 +7,8 @@ import {
   LayoutGrid,
   CalendarRange,
 } from "lucide-react";
+import { useFinancialData } from "../hooks/useFinancialData";
+
 import Header from "./Header";
 import FinancialGrid from "./FinancialGrid";
 import Sidebar from "./Sidebar";
@@ -16,208 +16,98 @@ import HistoricalChart from "./HistoricalChart";
 import DebtTracking from "./DebtTracking";
 import AddTransactionModal from "./AddTransactionModal";
 import AddDebtModal from "./AddDebtModal";
-import AddDebtModal from "./AddDebtModal";
 import AddIncomeModal from "./AddIncomeModal";
 import ManageIncomesModal from "./ManageIncomesModal";
 import ExportButtons from "./ExportButtons";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+// Optimized animation variants
+const fadeInUp = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -20 },
+};
+
+const staggerContainer = {
+  animate: {
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+};
 
 const Dashboard = () => {
-  const [expenses, setExpenses] = useState([]);
-  const [debts, setDebts] = useState([]);
-  const [incomes, setIncomes] = useState([]);
-  const [summary, setSummary] = useState({
-    total_income: 0,
-    total_expenses: 0,
-    total_debt: 0,
-    total_committed: 0,
-    available_salary: 0,
+  const { data, loading, actions } = useFinancialData();
+  const { expenses, debts, incomes, summary } = data;
+
+  const [modals, setModals] = useState({
+    expense: false,
+    debt: false,
+    income: false,
+    manageIncomes: false,
   });
-  const [loading, setLoading] = useState(true);
-  const [showAddExpense, setShowAddExpense] = useState(false);
-  const [showAddDebt, setShowAddDebt] = useState(false);
-  const [showAddIncome, setShowAddIncome] = useState(false);
-  const [showManageIncomes, setShowManageIncomes] = useState(false);
 
-  // Optimized Fetch all data
-  const fetchData = React.useCallback(async () => {
-    try {
-      // Don't set global loading if we already have data (silent refresh)
-      if (expenses.length === 0) setLoading(true);
+  const toggleModal = (modal, value) => {
+    setModals((prev) => ({ ...prev, [modal]: value }));
+  };
 
-      const [expensesRes, debtsRes, incomesRes, summaryRes] = await Promise.all(
-        [
-          axios.get(`${API}/expenses`),
-          axios.get(`${API}/debts`),
-          axios.get(`${API}/incomes`),
-          axios.get(`${API}/summary`),
-        ],
-      );
+  const handleAddExpense = async (expenseData) => {
+    const success = await actions.addExpense(expenseData);
+    if (success) toggleModal("expense", false);
+  };
 
-      setExpenses(expensesRes.data);
-      setDebts(debtsRes.data);
-      setIncomes(incomesRes.data);
-      setSummary(summaryRes.data);
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      toast.error("Erro ao carregar dados");
-    } finally {
-      setLoading(false);
-    }
-  }, [expenses.length]);
+  const handleAddDebt = async (debtData) => {
+    const success = await actions.addDebt(debtData);
+    if (success) toggleModal("debt", false);
+  };
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  const handleAddIncome = async (incomeData) => {
+    const success = await actions.addIncome(incomeData);
+    if (success) toggleModal("income", false);
+  };
 
-  // Memoized Handlers
-  const handleAddExpense = React.useCallback(
-    async (expenseData) => {
-      try {
-        await axios.post(`${API}/expenses`, expenseData);
-        toast.success("Despesa adicionada com sucesso!");
-        fetchData();
-        setShowAddExpense(false);
-      } catch (error) {
-        toast.error("Erro ao adicionar despesa");
-      }
-    },
-    [fetchData],
+  // Memoize action buttons to prevent re-renders
+  const actionButtons = useMemo(
+    () => [
+      {
+        label: "Próximo Mês",
+        icon: CalendarRange,
+        onClick: actions.rollMonth,
+        className:
+          "btn-base bg-purple-500/10 text-purple-500 border border-purple-500/20 hover:bg-purple-500 hover:text-white",
+        title: "Gera automaticamente entradas do próximo mês",
+        hideOnMobile: true,
+      },
+      {
+        label: "Receita",
+        icon: Plus,
+        onClick: () => toggleModal("income", true),
+        className: "btn-primary",
+      },
+      {
+        label: "Despesa",
+        icon: Minus,
+        onClick: () => toggleModal("expense", true),
+        className: "btn-secondary",
+      },
+      {
+        label: "Dívida",
+        icon: CreditCard,
+        onClick: () => toggleModal("debt", true),
+        className: "btn-destructive",
+      },
+    ],
+    [actions.rollMonth],
   );
-
-  const handleUpdateExpense = React.useCallback(
-    async (id, updates) => {
-      try {
-        await axios.put(`${API}/expenses/${id}`, updates);
-        toast.success("Despesa atualizada!");
-        fetchData();
-      } catch (error) {
-        toast.error("Erro ao atualizar despesa");
-      }
-    },
-    [fetchData],
-  );
-
-  const handleDeleteExpense = React.useCallback(
-    async (id) => {
-      try {
-        await axios.delete(`${API}/expenses/${id}`);
-        toast.success("Despesa excluída!");
-        fetchData();
-      } catch (error) {
-        toast.error("Erro ao excluir despesa");
-      }
-    },
-    [fetchData],
-  );
-
-  const handleAddDebt = React.useCallback(
-    async (debtData) => {
-      try {
-        await axios.post(`${API}/debts`, debtData);
-        toast.success("Dívida adicionada com sucesso!");
-        fetchData();
-        setShowAddDebt(false);
-      } catch (error) {
-        toast.error("Erro ao adicionar dívida");
-      }
-    },
-    [fetchData],
-  );
-
-  const handleUpdateDebt = React.useCallback(
-    async (id, updates) => {
-      try {
-        await axios.put(`${API}/debts/${id}`, updates);
-        toast.success("Dívida atualizada!");
-        fetchData();
-      } catch (error) {
-        toast.error("Erro ao atualizar dívida");
-      }
-    },
-    [fetchData],
-  );
-
-  const handleDeleteDebt = React.useCallback(
-    async (id) => {
-      try {
-        await axios.delete(`${API}/debts/${id}`);
-        toast.success("Dívida excluída!");
-        fetchData();
-      } catch (error) {
-        toast.error("Erro ao excluir dívida");
-      }
-    },
-    [fetchData],
-  );
-
-  const handleAddIncome = React.useCallback(
-    async (incomeData) => {
-      try {
-        await axios.post(`${API}/incomes`, incomeData);
-        toast.success("Receita adicionada com sucesso!");
-        fetchData();
-        setShowAddIncome(false);
-      } catch (error) {
-        toast.error("Erro ao adicionar receita");
-      }
-    },
-    [fetchData],
-  );
-
-  const handleUpdateIncome = React.useCallback(
-    async (id, updates) => {
-      try {
-        await axios.put(`${API}/incomes/${id}`, updates);
-        toast.success("Receita atualizada!");
-        fetchData();
-      } catch (error) {
-        toast.error("Erro ao atualizar receita");
-      }
-    },
-    [fetchData],
-  );
-
-  const handleDeleteIncome = React.useCallback(
-    async (id) => {
-      try {
-        await axios.delete(`${API}/incomes/${id}`);
-        toast.success("Receita excluída!");
-        fetchData();
-      } catch (error) {
-        toast.error("Erro ao excluir receita");
-      }
-    },
-    [fetchData],
-  );
-
-  const handleRollMonth = React.useCallback(async () => {
-    if (
-      window.confirm(
-        "Isso irá criar cópias de todas as despesas fixas e receitas para o próximo mês. Deseja continuar?",
-      )
-    ) {
-      try {
-        const response = await axios.post(`${API}/roll-month`);
-        toast.success(response.data.message);
-        fetchData();
-      } catch (error) {
-        toast.error("Erro ao processar próximo mês");
-      }
-    }
-  }, [fetchData]);
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center space-y-4">
+      <div className="min-h-screen flex flex-col items-center justify-center space-y-4 px-4">
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
           className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full"
         />
-        <div className="text-white/50 text-xl font-heading animate-pulse">
+        <div className="text-white/50 text-base sm:text-xl font-heading animate-pulse text-center">
           Iniciando Dashboard...
         </div>
       </div>
@@ -228,72 +118,76 @@ const Dashboard = () => {
     <div className="min-h-screen pb-20">
       <Header
         summary={summary}
-        onEditIncomes={() => setShowManageIncomes(true)}
+        onEditIncomes={() => toggleModal("manageIncomes", true)}
       />
 
-      <main className="max-w-[1600px] mx-auto px-6 lg:px-12 -mt-8 relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Main Space */}
-          <div className="lg:col-span-8 space-y-8">
-            {/* Action Bar */}
+      <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-12 -mt-4 sm:-mt-8 relative z-10">
+        <motion.div
+          className="grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-6 lg:gap-8 items-start"
+          variants={staggerContainer}
+          initial="initial"
+          animate="animate"
+        >
+          {/* Main Content Area */}
+          <div className="xl:col-span-8 space-y-4 sm:space-y-6 lg:space-y-8">
+            {/* Action Bar - Responsive */}
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex flex-col sm:flex-row items-center justify-between gap-6 glass-card p-6 rounded-3xl"
+              variants={fadeInUp}
+              className="flex flex-col gap-4 glass-card p-4 sm:p-6 rounded-2xl sm:rounded-3xl"
             >
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-white/5 rounded-2xl">
-                  <LayoutGrid className="text-muted-foreground" size={24} />
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="p-2 sm:p-3 bg-white/5 rounded-xl sm:rounded-2xl">
+                  <LayoutGrid className="text-muted-foreground" size={20} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-white">
+                  <h3 className="text-base sm:text-lg font-bold text-white">
                     Ações Rápidas
                   </h3>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground hidden sm:block">
                     Gerencie seus fluxos financeiros
                   </p>
                 </div>
               </div>
 
-              <div className="flex gap-3 flex-wrap justify-center sm:justify-end flex-1">
-                <button
-                  onClick={handleRollMonth}
-                  className="btn-base bg-purple-500/10 text-purple-500 border border-purple-500/20 hover:bg-purple-500 hover:text-white"
-                  title="Gera automaticamente entradas do próximo mês"
-                >
-                  <CalendarRange size={18} strokeWidth={2.5} />
-                  <span>Próximo Mês</span>
-                </button>
-                <button
-                  onClick={() => setShowAddIncome(true)}
-                  className="btn-primary"
-                >
-                  <Plus size={18} strokeWidth={3} />
-                  <span>Receita</span>
-                </button>
-                <button
-                  onClick={() => setShowAddExpense(true)}
-                  className="btn-secondary"
-                >
-                  <Minus size={18} strokeWidth={3} />
-                  <span>Despesa</span>
-                </button>
-                <button
-                  onClick={() => setShowAddDebt(true)}
-                  className="btn-destructive"
-                >
-                  <CreditCard size={18} strokeWidth={2.5} />
-                  <span>Dívida</span>
-                </button>
+              <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3">
+                {actionButtons.map((btn, idx) => {
+                  const Icon = btn.icon;
+                  if (btn.hideOnMobile) {
+                    return (
+                      <button
+                        key={idx}
+                        onClick={btn.onClick}
+                        className={`${btn.className} hidden sm:flex`}
+                        title={btn.title}
+                      >
+                        <Icon size={18} strokeWidth={2.5} />
+                        <span className="hidden md:inline">{btn.label}</span>
+                      </button>
+                    );
+                  }
+                  return (
+                    <button
+                      key={idx}
+                      onClick={btn.onClick}
+                      className={btn.className}
+                      title={btn.title}
+                    >
+                      <Icon
+                        size={16}
+                        strokeWidth={3}
+                        className="sm:w-[18px] sm:h-[18px]"
+                      />
+                      <span className="text-xs sm:text-sm">{btn.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </motion.div>
 
-            {/* Export & Controls */}
+            {/* Export Buttons - Hide on mobile, show on tablet+ */}
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="px-8"
+              variants={fadeInUp}
+              className="hidden sm:block px-4 sm:px-8"
             >
               <ExportButtons
                 expenses={expenses}
@@ -302,80 +196,68 @@ const Dashboard = () => {
               />
             </motion.div>
 
-            {/* Charts Section */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.2 }}
-            >
+            {/* Charts - Responsive */}
+            <motion.div variants={fadeInUp}>
               <HistoricalChart expenses={expenses} incomes={incomes} />
             </motion.div>
 
-            {/* Grids */}
-            <div className="space-y-8">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-              >
+            {/* Data Grids - Responsive */}
+            <div className="space-y-4 sm:space-y-6 lg:space-y-8">
+              <motion.div variants={fadeInUp}>
                 <FinancialGrid
                   expenses={expenses}
-                  onUpdateExpense={handleUpdateExpense}
-                  onDeleteExpense={handleDeleteExpense}
+                  onUpdateExpense={actions.updateExpense}
+                  onDeleteExpense={actions.deleteExpense}
                 />
               </motion.div>
 
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-              >
+              <motion.div variants={fadeInUp}>
                 <DebtTracking
                   debts={debts}
-                  onUpdateDebt={handleUpdateDebt}
-                  onDeleteDebt={handleDeleteDebt}
+                  onUpdateDebt={actions.updateDebt}
+                  onDeleteDebt={actions.deleteDebt}
                 />
               </motion.div>
             </div>
           </div>
 
-          {/* Sidebar Area */}
-          <div className="lg:col-span-4 sticky top-8">
+          {/* Sidebar - Responsive: Bottom on mobile, side on desktop */}
+          <div className="xl:col-span-4 xl:sticky xl:top-8">
             <Sidebar expenses={expenses} debts={debts} summary={summary} />
           </div>
-        </div>
+        </motion.div>
       </main>
 
-      {/* Modals with AnimatePresence */}
-      <AnimatePresence>
-        {showAddExpense && (
+      {/* Modals */}
+      <AnimatePresence mode="wait">
+        {modals.expense && (
           <AddTransactionModal
-            isOpen={showAddExpense}
-            onClose={() => setShowAddExpense(false)}
+            isOpen={modals.expense}
+            onClose={() => toggleModal("expense", false)}
             onSubmit={handleAddExpense}
           />
         )}
-        {showAddDebt && (
+        {modals.debt && (
           <AddDebtModal
-            isOpen={showAddDebt}
-            onClose={() => setShowAddDebt(false)}
+            isOpen={modals.debt}
+            onClose={() => toggleModal("debt", false)}
             onSubmit={handleAddDebt}
           />
         )}
-        {showAddIncome && (
+        {modals.income && (
           <AddIncomeModal
-            isOpen={showAddIncome}
-            onClose={() => setShowAddIncome(false)}
+            isOpen={modals.income}
+            onClose={() => toggleModal("income", false)}
             onSubmit={handleAddIncome}
           />
         )}
-        {showManageIncomes && (
+        {modals.manageIncomes && (
           <ManageIncomesModal
-            isOpen={showManageIncomes}
-            onClose={() => setShowManageIncomes(false)}
+            isOpen={modals.manageIncomes}
+            onClose={() => toggleModal("manageIncomes", false)}
             incomes={incomes}
-            onUpdateIncome={handleUpdateIncome}
-            onDeleteIncome={handleDeleteIncome}
+            onUpdateIncome={actions.updateIncome}
+            onDeleteIncome={actions.deleteIncome}
           />
         )}
       </AnimatePresence>

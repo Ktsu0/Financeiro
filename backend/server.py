@@ -301,7 +301,7 @@ async def roll_month():
     return {
         "message": "Próximo mês iniciado com sucesso!",
         "added_expenses": len(new_expenses),
-        "updated_debts": len(updated_debts),
+        "updated_debts": len(store.debts),
         "added_incomes": len(new_incomes)
     }
 

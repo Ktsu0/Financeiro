@@ -200,3 +200,63 @@ select:focus {
   );
   animation: shimmer 2s infinite;
 }
+
+/* RGB Text Animation */
+@keyframes rgb-text {
+  0% {
+    color: #ff0000;
+  }
+  15% {
+    color: #ff00ff;
+  }
+  30% {
+    color: #0000ff;
+  }
+  45% {
+    color: #00ffff;
+  }
+  60% {
+    color: #00ff00;
+  }
+  75% {
+    color: #ffff00;
+  }
+  100% {
+    color: #ff0000;
+  }
+}
+
+.animate-rgb {
+  animation: rgb-text 8s linear infinite;
+}
+
+@keyframes bounce-slow {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5%);
+  }
+}
+
+.animate-bounce-slow {
+  animation: bounce-slow 2s infinite ease-in-out;
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(5deg);
+  }
+  75% {
+    transform: rotate(-5deg);
+  }
+}
+
+.animate-shake {
+  animation: shake 0.5s infinite;
+}

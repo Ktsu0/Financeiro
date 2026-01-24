@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { formatCurrency } from "../utils";
+import FinancialPet from "./FinancialPet";
 
 const Header = React.memo(({ summary, onEditIncomes }) => {
   const containerVariants = {
@@ -33,26 +34,27 @@ const Header = React.memo(({ summary, onEditIncomes }) => {
       <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 bg-primary/5 rounded-full blur-[100px]" />
       <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 bg-blue-500/5 rounded-full blur-[100px]" />
 
-      <div className="max-w-[1600px] mx-auto px-6 lg:px-12 py-10 relative">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-8 lg:py-10 relative">
+        {/* Top Section: Logo + Pet */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6 mb-6 sm:mb-8 lg:mb-10">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-primary/10 rounded-xl">
-                <Wallet className="text-primary" size={24} />
+            <div className="flex items-center gap-2 sm:gap-3 mb-2">
+              <div className="p-1.5 sm:p-2 bg-primary/10 rounded-lg sm:rounded-xl">
+                <Wallet className="text-primary" size={20} />
               </div>
               <h1
-                className="text-3xl font-extrabold tracking-tight font-heading text-white"
+                className="text-2xl sm:text-3xl font-extrabold tracking-tight font-heading text-white"
                 data-testid="app-title"
               >
-                NEON<span className="text-primary italic">FINANCE</span>
+                <span className="animate-rgb">FINANCE</span>
               </h1>
             </div>
-            <p className="text-sm text-muted-foreground font-body max-w-xs">
-              Sua gestão financeira de próxima geração, simples e poderosa.
+            <p className="text-xs sm:text-sm text-muted-foreground font-body max-w-xs">
+              Sua gestão financeira de próxima geração
             </p>
           </motion.div>
 
@@ -61,117 +63,107 @@ const Header = React.memo(({ summary, onEditIncomes }) => {
             animate={{ opacity: 1, x: 0 }}
             className="flex items-center gap-4"
           >
-            <div className="text-right hidden sm:block">
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                Estado Atual
-              </p>
-              <p className="text-sm font-medium text-white">
-                Consolidado em Tempo Real
-              </p>
-            </div>
-            <div className="h-10 w-[1px] bg-white/10 hidden sm:block" />
-            <div className="flex -space-x-2">
-              {[1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className="w-8 h-8 rounded-full border-2 border-background bg-secondary flex items-center justify-center text-[10px] font-bold"
-                >
-                  {i}
-                </div>
-              ))}
-            </div>
+            <FinancialPet summary={summary} />
           </motion.div>
         </div>
 
+        {/* Cards Section - Responsive Grid */}
         <motion.div
           variants={containerVariants}
           initial="hidden"
           animate="visible"
-          className="grid grid-cols-1 md:grid-cols-2 gap-6"
+          className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6"
         >
-          {/* Available Salary */}
+          {/* Available Salary Card */}
           <motion.div
             variants={itemVariants}
-            className="glass-card rounded-2xl p-8 neon-glow relative overflow-hidden group"
+            className="glass-card rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 neon-glow relative overflow-hidden group"
             data-testid="available-salary-card"
           >
             <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-              <TrendingUp size={80} />
+              <TrendingUp size={60} className="sm:w-20 sm:h-20" />
             </div>
             <div className="relative flex items-start justify-between">
-              <div className="space-y-4">
+              <div className="space-y-2 sm:space-y-4 flex-1">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                  <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                  <p className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-muted-foreground">
                     Capital Disponível
                   </p>
                 </div>
                 <div>
                   <h2
-                    className="text-5xl font-extrabold font-heading tracking-tight text-white mb-2"
+                    className="text-3xl sm:text-4xl lg:text-5xl font-extrabold font-heading tracking-tight text-white mb-1 sm:mb-2"
                     data-testid="available-salary-value"
                   >
                     {formatCurrency(summary.available_salary)}
                   </h2>
-                  <div className="flex items-center gap-2 text-primary text-sm font-medium">
-                    <ArrowUpRight size={16} />
-                    <span>
+                  <div className="flex items-center gap-2 text-primary text-xs sm:text-sm font-medium">
+                    <ArrowUpRight size={14} className="sm:w-4 sm:h-4" />
+                    <span className="truncate">
                       +{formatCurrency(summary.total_income)} entrada total
                     </span>
                   </div>
                 </div>
               </div>
-              <div className="flex flex-col gap-2">
-                <div className="p-4 bg-primary text-primary-foreground rounded-2xl shadow-xl shadow-primary/20">
-                  <TrendingUp size={24} strokeWidth={2.5} />
+              <div className="flex flex-col gap-2 ml-2">
+                <div className="p-2 sm:p-3 lg:p-4 bg-primary text-primary-foreground rounded-xl sm:rounded-2xl shadow-xl shadow-primary/20">
+                  <TrendingUp
+                    size={18}
+                    strokeWidth={2.5}
+                    className="sm:w-6 sm:h-6"
+                  />
                 </div>
                 <button
                   onClick={onEditIncomes}
-                  className="p-2 bg-white/5 hover:bg-white/10 text-white/50 hover:text-white rounded-xl transition-all flex items-center justify-center"
+                  className="p-1.5 sm:p-2 bg-white/5 hover:bg-white/10 text-white/50 hover:text-white rounded-lg sm:rounded-xl transition-all flex items-center justify-center"
                   title="Gerenciar Receitas"
                 >
-                  <Edit2 size={16} />
+                  <Edit2 size={14} className="sm:w-4 sm:h-4" />
                 </button>
               </div>
             </div>
           </motion.div>
 
-          {/* Total Committed */}
+          {/* Total Committed Card */}
           <motion.div
             variants={itemVariants}
-            className="glass-card rounded-2xl p-8 neon-glow-red relative overflow-hidden group"
+            className="glass-card rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 neon-glow-red relative overflow-hidden group"
             data-testid="total-committed-card"
           >
             <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-              <TrendingDown size={80} />
+              <TrendingDown size={60} className="sm:w-20 sm:h-20" />
             </div>
             <div className="relative flex items-start justify-between">
-              <div className="space-y-4">
+              <div className="space-y-2 sm:space-y-4 flex-1">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
-                  <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                  <p className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-muted-foreground">
                     Total Comprometido
                   </p>
                 </div>
                 <div>
                   <h2
-                    className="text-5xl font-extrabold font-heading tracking-tight text-white mb-2"
+                    className="text-3xl sm:text-4xl lg:text-5xl font-extrabold font-heading tracking-tight text-white mb-1 sm:mb-2"
                     data-testid="total-committed-value"
                   >
                     {formatCurrency(summary.total_committed)}
                   </h2>
-                  <div className="flex items-center gap-2 text-destructive text-sm font-medium">
-                    <ArrowDownRight size={16} />
-                    <span>
-                      {" "}
+                  <div className="flex items-center gap-2 text-destructive text-xs sm:text-sm font-medium">
+                    <ArrowDownRight size={14} className="sm:w-4 sm:h-4" />
+                    <span className="truncate">
                       {formatCurrency(summary.total_expenses)} fixas +{" "}
                       {formatCurrency(summary.total_debt)} dívidas
                     </span>
                   </div>
                 </div>
               </div>
-              <div className="p-4 bg-destructive text-destructive-foreground rounded-2xl shadow-xl shadow-destructive/20">
-                <TrendingDown size={24} strokeWidth={2.5} />
+              <div className="p-2 sm:p-3 lg:p-4 bg-destructive text-destructive-foreground rounded-xl sm:rounded-2xl shadow-xl shadow-destructive/20 ml-2">
+                <TrendingDown
+                  size={18}
+                  strokeWidth={2.5}
+                  className="sm:w-6 sm:h-6"
+                />
               </div>
             </div>
           </motion.div>
