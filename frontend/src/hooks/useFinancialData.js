@@ -1,197 +1,314 @@
-import { useState, useEffect, useCallback } from "react";
-import axios from "axios";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { toast } from "sonner";
+import axios from "axios";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+const STORAGE_KEY = "@financeiro_v1_data";
+const CLOUD_URL_KEY = "@financeiro_cloud_url";
+
+const initialData = {
+  expenses: [],
+  debts: [],
+  incomes: [],
+};
 
 export const useFinancialData = () => {
-  const [expenses, setExpenses] = useState([]);
-  const [debts, setDebts] = useState([]);
-  const [incomes, setIncomes] = useState([]);
-  const [summary, setSummary] = useState({
-    total_income: 0,
-    total_expenses: 0,
-    total_debt: 0,
-    total_committed: 0,
-    available_salary: 0,
+  const [data, setData] = useState(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return saved ? JSON.parse(saved) : initialData;
   });
-  const [loading, setLoading] = useState(true);
 
-  const fetchData = useCallback(async () => {
-    try {
-      if (expenses.length === 0) setLoading(true);
+  const [cloudUrl, setCloudUrl] = useState(
+    () => localStorage.getItem(CLOUD_URL_KEY) || "",
+  );
+  const [loading, setLoading] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const saveTimeoutRef = useRef(null);
 
-      const [expensesRes, debtsRes, incomesRes, summaryRes] = await Promise.all(
-        [
-          axios.get(`${API}/expenses`),
-          axios.get(`${API}/debts`),
-          axios.get(`${API}/incomes`),
-          axios.get(`${API}/summary`),
-        ],
-      );
-
-      setExpenses(expensesRes.data);
-      setDebts(debtsRes.data);
-      setIncomes(incomesRes.data);
-      setSummary(summaryRes.data);
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      toast.error("Erro ao carregar dados");
-    } finally {
-      setLoading(false);
-    }
-  }, [expenses.length]);
-
+  // Persistence Local & Auto-sync
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+
+    if (cloudUrl) {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = setTimeout(() => {
+        syncToCloud();
+      }, 2000);
+    }
+  }, [data, cloudUrl]);
+
+  const { expenses, debts, incomes } = data;
+
+  // Cloud Actions
+  const syncToCloud = async (targetUrl = cloudUrl) => {
+    if (!targetUrl) return;
+    try {
+      setIsSyncing(true);
+      await axios.post(targetUrl, JSON.stringify(data), {
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+      });
+    } catch (error) {
+      console.error("Cloud Sync Error:", error);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const loadFromCloud = useCallback(
+    async (targetUrl = cloudUrl) => {
+      if (!targetUrl) return;
+      try {
+        setLoading(true);
+        const response = await axios.get(targetUrl);
+        if (response.data && response.data.expenses) {
+          setData(response.data);
+          toast.success("Dados carregados da nuvem!");
+        }
+      } catch (error) {
+        console.error("Load Error:", error);
+        toast.error("Erro ao buscar dados da nuvem");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [cloudUrl],
+  );
+
+  const updateCloudUrl = (url) => {
+    localStorage.setItem(CLOUD_URL_KEY, url);
+    setCloudUrl(url);
+    if (url) {
+      toast.success("Link da nuvem configurado!");
+      loadFromCloud(url);
+    } else {
+      toast.info("Sincronização desativada");
+    }
+  };
+
+  // Summary Calculation
+  const summary = useMemo(() => {
+    const total_income = incomes.reduce(
+      (sum, inc) => sum + (Number(inc.value) || 0),
+      0,
+    );
+    const total_expenses = expenses.reduce(
+      (sum, exp) => sum + (Number(exp.value) || 0),
+      0,
+    );
+
+    const total_debt = debts.reduce((sum, d) => {
+      const remaining =
+        (Number(d.total_amount) || 0) - (Number(d.paid_amount) || 0);
+      return sum + Math.max(0, remaining);
+    }, 0);
+
+    const total_committed =
+      total_expenses +
+      debts.reduce((sum, d) => sum + (Number(d.installment_value) || 0), 0);
+    const available_salary = total_income - total_committed;
+
+    return {
+      total_income,
+      total_expenses,
+      total_debt,
+      total_committed,
+      available_salary,
+    };
+  }, [expenses, debts, incomes]);
+
+  // Generators
+  const generateId = () => crypto.randomUUID();
+  const getNowISO = () => new Date().toISOString();
 
   // Actions
-  const addExpense = useCallback(
-    async (expenseData) => {
-      try {
-        await axios.post(`${API}/expenses`, expenseData);
-        toast.success("Despesa adicionada com sucesso!");
-        fetchData();
+  const addExpense = useCallback((expenseData) => {
+    const newExpense = {
+      ...expenseData,
+      id: generateId(),
+      status: expenseData.status || "pending",
+      created_at: getNowISO(),
+    };
+    setData((prev) => ({
+      ...prev,
+      expenses: [...prev.expenses, newExpense],
+    }));
+    toast.success("Despesa adicionada!");
+    return true;
+  }, []);
+
+  const updateExpense = useCallback((id, updates) => {
+    setData((prev) => ({
+      ...prev,
+      expenses: prev.expenses.map((exp) =>
+        exp.id === id ? { ...exp, ...updates } : exp,
+      ),
+    }));
+    toast.success("Despesa atualizada!");
+  }, []);
+
+  const deleteExpense = useCallback((id) => {
+    setData((prev) => ({
+      ...prev,
+      expenses: prev.expenses.filter((exp) => exp.id !== id),
+    }));
+    toast.success("Despesa excluída!");
+  }, []);
+
+  const addDebt = useCallback((debtData) => {
+    const newDebt = {
+      ...debtData,
+      id: generateId(),
+      paid_amount: Number(debtData.paid_amount) || 0,
+      created_at: getNowISO(),
+    };
+    setData((prev) => ({
+      ...prev,
+      debts: [...prev.debts, newDebt],
+    }));
+    toast.success("Dívida adicionada!");
+    return true;
+  }, []);
+
+  const updateDebt = useCallback((id, updates) => {
+    setData((prev) => ({
+      ...prev,
+      debts: prev.debts.map((d) => (d.id === id ? { ...d, ...updates } : d)),
+    }));
+    toast.success("Dívida atualizada!");
+  }, []);
+
+  const deleteDebt = useCallback((id) => {
+    setData((prev) => ({
+      ...prev,
+      debts: prev.debts.filter((d) => d.id !== id),
+    }));
+    toast.success("Dívida excluída!");
+  }, []);
+
+  const addIncome = useCallback((incomeData) => {
+    const newIncome = {
+      ...incomeData,
+      id: generateId(),
+      created_at: getNowISO(),
+    };
+    setData((prev) => ({
+      ...prev,
+      incomes: [...prev.incomes, newIncome],
+    }));
+    toast.success("Receita adicionada!");
+    return true;
+  }, []);
+
+  const updateIncome = useCallback((id, updates) => {
+    setData((prev) => ({
+      ...prev,
+      incomes: prev.incomes.map((inc) =>
+        inc.id === id ? { ...inc, ...updates } : inc,
+      ),
+    }));
+    toast.success("Receita atualizada!");
+  }, []);
+
+  const deleteIncome = useCallback((id) => {
+    setData((prev) => ({
+      ...prev,
+      incomes: prev.incomes.filter((inc) => inc.id !== id),
+    }));
+    toast.success("Receita excluída!");
+  }, []);
+
+  const rollMonth = useCallback(() => {
+    if (!window.confirm("Deseja iniciar o próximo mês?")) return;
+
+    setData((prev) => {
+      const newExpenses = [];
+      const newIncomes = [];
+      const updatedDebts = prev.debts.map((debt) => ({
+        ...debt,
+        paid_amount: Math.min(
+          (Number(debt.paid_amount) || 0) +
+            (Number(debt.installment_value) || 0),
+          Number(debt.total_amount) || 0,
+        ),
+      }));
+
+      const incrementMonth = (dateStr) => {
+        try {
+          const [d, m, y] = dateStr.split("/").map(Number);
+          let newM = m + 1;
+          let newY = y;
+          if (newM > 12) {
+            newM = 1;
+            newY += 1;
+          }
+          return `${String(d).padStart(2, "0")}/${String(newM).padStart(2, "0")}/${newY}`;
+        } catch (e) {
+          return dateStr;
+        }
+      };
+
+      prev.expenses.forEach((exp) => {
+        if (exp.is_fixed) {
+          newExpenses.push({
+            ...exp,
+            id: generateId(),
+            due_date: incrementMonth(exp.due_date),
+            status: "pending",
+            created_at: getNowISO(),
+          });
+        }
+      });
+
+      prev.incomes.forEach((inc) => {
+        newIncomes.push({
+          ...inc,
+          id: generateId(),
+          date: incrementMonth(inc.date),
+          created_at: getNowISO(),
+        });
+      });
+
+      return {
+        expenses: [...prev.expenses, ...newExpenses],
+        incomes: [...prev.incomes, ...newIncomes],
+        debts: updatedDebts,
+      };
+    });
+    toast.success("Próximo mês iniciado!");
+  }, []);
+
+  const exportData = useCallback(() => {
+    const dataStr = JSON.stringify(data, null, 2);
+    const dataUri =
+      "data:application/json;charset=utf-8," + encodeURIComponent(dataStr);
+    const linkElement = document.createElement("a");
+    linkElement.setAttribute("href", dataUri);
+    linkElement.setAttribute(
+      "download",
+      `backup_financeiro_${new Date().toISOString().split("T")[0]}.json`,
+    );
+    linkElement.click();
+  }, [data]);
+
+  const importData = useCallback((jsonData) => {
+    try {
+      const parsed =
+        typeof jsonData === "string" ? JSON.parse(jsonData) : jsonData;
+      if (parsed.expenses) {
+        setData(parsed);
+        toast.success("Dados importados!");
         return true;
-      } catch (error) {
-        toast.error("Erro ao adicionar despesa");
-        return false;
       }
-    },
-    [fetchData],
-  );
-
-  const updateExpense = useCallback(
-    async (id, updates) => {
-      try {
-        await axios.put(`${API}/expenses/${id}`, updates);
-        toast.success("Despesa atualizada!");
-        fetchData();
-      } catch (error) {
-        toast.error("Erro ao atualizar despesa");
-      }
-    },
-    [fetchData],
-  );
-
-  const deleteExpense = useCallback(
-    async (id) => {
-      try {
-        await axios.delete(`${API}/expenses/${id}`);
-        toast.success("Despesa excluída!");
-        fetchData();
-      } catch (error) {
-        toast.error("Erro ao excluir despesa");
-      }
-    },
-    [fetchData],
-  );
-
-  const addDebt = useCallback(
-    async (debtData) => {
-      try {
-        await axios.post(`${API}/debts`, debtData);
-        toast.success("Dívida adicionada com sucesso!");
-        fetchData();
-        return true;
-      } catch (error) {
-        toast.error("Erro ao adicionar dívida");
-        return false;
-      }
-    },
-    [fetchData],
-  );
-
-  const updateDebt = useCallback(
-    async (id, updates) => {
-      try {
-        await axios.put(`${API}/debts/${id}`, updates);
-        toast.success("Dívida atualizada!");
-        fetchData();
-      } catch (error) {
-        toast.error("Erro ao atualizar dívida");
-      }
-    },
-    [fetchData],
-  );
-
-  const deleteDebt = useCallback(
-    async (id) => {
-      try {
-        await axios.delete(`${API}/debts/${id}`);
-        toast.success("Dívida excluída!");
-        fetchData();
-      } catch (error) {
-        toast.error("Erro ao excluir dívida");
-      }
-    },
-    [fetchData],
-  );
-
-  const addIncome = useCallback(
-    async (incomeData) => {
-      try {
-        await axios.post(`${API}/incomes`, incomeData);
-        toast.success("Receita adicionada com sucesso!");
-        fetchData();
-        return true;
-      } catch (error) {
-        toast.error("Erro ao adicionar receita");
-        return false;
-      }
-    },
-    [fetchData],
-  );
-
-  const updateIncome = useCallback(
-    async (id, updates) => {
-      try {
-        await axios.put(`${API}/incomes/${id}`, updates);
-        toast.success("Receita atualizada!");
-        fetchData();
-      } catch (error) {
-        toast.error("Erro ao atualizar receita");
-      }
-    },
-    [fetchData],
-  );
-
-  const deleteIncome = useCallback(
-    async (id) => {
-      try {
-        await axios.delete(`${API}/incomes/${id}`);
-        toast.success("Receita excluída!");
-        fetchData();
-      } catch (error) {
-        toast.error("Erro ao excluir receita");
-      }
-    },
-    [fetchData],
-  );
-
-  const rollMonth = useCallback(async () => {
-    if (
-      window.confirm(
-        "Isso irá criar cópias de todas as despesas fixas e receitas para o próximo mês. Deseja continuar?",
-      )
-    ) {
-      try {
-        const response = await axios.post(`${API}/roll-month`);
-        toast.success(response.data.message);
-        fetchData();
-      } catch (error) {
-        toast.error("Erro ao processar próximo mês");
-      }
+    } catch (e) {
+      toast.error("Erro ao importar");
     }
-  }, [fetchData]);
+    return false;
+  }, []);
 
   return {
-    data: { expenses, debts, incomes, summary },
+    data: { expenses, debts, incomes, summary, cloudUrl, isSyncing },
     loading,
     actions: {
-      fetchData,
+      fetchData: loadFromCloud,
       addExpense,
       updateExpense,
       deleteExpense,
@@ -202,6 +319,10 @@ export const useFinancialData = () => {
       updateIncome,
       deleteIncome,
       rollMonth,
+      exportData,
+      importData,
+      updateCloudUrl,
+      forceSync: syncToCloud,
     },
   };
 };

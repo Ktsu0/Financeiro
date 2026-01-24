@@ -6,12 +6,12 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Edit2,
+  Settings,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { formatCurrency } from "../utils";
-import FinancialPet from "./FinancialPet";
 
-const Header = React.memo(({ summary, onEditIncomes }) => {
+const Header = React.memo(({ summary, onEditIncomes, onOpenSettings }) => {
   const containerVariants = {
     hidden: { opacity: 0, y: -20 },
     visible: {
@@ -35,7 +35,6 @@ const Header = React.memo(({ summary, onEditIncomes }) => {
       <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 bg-blue-500/5 rounded-full blur-[100px]" />
 
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-8 lg:py-10 relative">
-        {/* Top Section: Logo + Pet */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6 mb-6 sm:mb-8 lg:mb-10">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -50,7 +49,7 @@ const Header = React.memo(({ summary, onEditIncomes }) => {
                 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-heading text-white"
                 data-testid="app-title"
               >
-                <span className="animate-rgb">FINANCE</span>
+                <span className="animate-rgb">Minhas Finanças</span>
               </h1>
             </div>
             <p className="text-xs sm:text-sm text-muted-foreground font-body max-w-xs">
@@ -61,9 +60,22 @@ const Header = React.memo(({ summary, onEditIncomes }) => {
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="flex items-center gap-4"
+            className="flex items-center gap-2 sm:gap-4"
           >
-            <FinancialPet summary={summary} />
+            <button
+              onClick={onOpenSettings}
+              className="group relative p-3 sm:p-4 bg-white/5 hover:bg-primary/10 border border-white/10 hover:border-primary/30 rounded-2xl sm:rounded-[1.5rem] transition-all duration-300 flex items-center gap-3 overflow-hidden shadow-lg"
+              title="Configurações"
+            >
+              <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <Settings
+                className="text-muted-foreground group-hover:text-primary transition-colors group-hover:rotate-90 duration-500"
+                size={20}
+              />
+              <span className="hidden sm:block text-sm font-bold text-white/70 group-hover:text-white transition-colors">
+                Ajustes
+              </span>
+            </button>
           </motion.div>
         </div>
 

@@ -18,7 +18,8 @@ import AddTransactionModal from "./AddTransactionModal";
 import AddDebtModal from "./AddDebtModal";
 import AddIncomeModal from "./AddIncomeModal";
 import ManageIncomesModal from "./ManageIncomesModal";
-import ExportButtons from "./ExportButtons";
+import SettingsModal from "./SettingsModal";
+import FinancialPet from "./FinancialPet";
 
 // Optimized animation variants
 const fadeInUp = {
@@ -44,6 +45,7 @@ const Dashboard = () => {
     debt: false,
     income: false,
     manageIncomes: false,
+    settings: false,
   });
 
   const toggleModal = (modal, value) => {
@@ -115,10 +117,11 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen pb-20">
+    <div className="min-h-screen pb-20 relative">
       <Header
         summary={summary}
         onEditIncomes={() => toggleModal("manageIncomes", true)}
+        onOpenSettings={() => toggleModal("settings", true)}
       />
 
       <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-12 -mt-4 sm:-mt-8 relative z-10">
@@ -184,18 +187,6 @@ const Dashboard = () => {
               </div>
             </motion.div>
 
-            {/* Export Buttons - Hide on mobile, show on tablet+ */}
-            <motion.div
-              variants={fadeInUp}
-              className="hidden sm:block px-4 sm:px-8"
-            >
-              <ExportButtons
-                expenses={expenses}
-                debts={debts}
-                incomes={incomes}
-              />
-            </motion.div>
-
             {/* Charts - Responsive */}
             <motion.div variants={fadeInUp}>
               <HistoricalChart expenses={expenses} incomes={incomes} />
@@ -228,6 +219,9 @@ const Dashboard = () => {
         </motion.div>
       </main>
 
+      {/* Floating Pet */}
+      <FinancialPet summary={summary} />
+
       {/* Modals */}
       <AnimatePresence mode="wait">
         {modals.expense && (
@@ -258,6 +252,20 @@ const Dashboard = () => {
             incomes={incomes}
             onUpdateIncome={actions.updateIncome}
             onDeleteIncome={actions.deleteIncome}
+          />
+        )}
+        {modals.settings && (
+          <SettingsModal
+            isOpen={modals.settings}
+            onClose={() => toggleModal("settings", false)}
+            expenses={expenses}
+            debts={debts}
+            incomes={incomes}
+            cloudUrl={data.cloudUrl}
+            isSyncing={data.isSyncing}
+            onUpdateCloudUrl={actions.updateCloudUrl}
+            onExportJSON={actions.exportData}
+            onImportJSON={actions.importData}
           />
         )}
       </AnimatePresence>
