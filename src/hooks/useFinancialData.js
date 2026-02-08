@@ -76,17 +76,21 @@ export const useFinancialData = () => {
         if (!silent) setLoading(true);
         const response = await axios.get(targetUrl);
 
-        if (response.data && response.data.expenses) {
+        if (
+          response.data &&
+          (response.data.expenses ||
+            response.data.debts ||
+            response.data.incomes)
+        ) {
           const newDataString = JSON.stringify(response.data);
 
-          // Só atualiza se os dados forem realmente diferentes
           if (newDataString !== previousDataHashRef.current) {
             previousDataHashRef.current = newDataString;
             setData(response.data);
-            if (!silent) toast.success("Dados carregados da nuvem!");
+            if (!silent) toast.success("Dados sincronizados com a nuvem!");
           }
+          initialLoadDoneRef.current = true;
         }
-        initialLoadDoneRef.current = true;
       } catch (error) {
         console.error("Load Error:", error);
         if (!silent) toast.error("Erro ao buscar dados da nuvem");
@@ -99,8 +103,7 @@ export const useFinancialData = () => {
 
   // Persistence Local & Auto-sync (Push)
   useEffect(() => {
-    // Atualiza o hash local sempre que o data mudar por ação do usuário
-    previousDataHashRef.current = JSON.stringify(data);
+    const currentDataString = JSON.stringify(data);
 
     // Encrypt data before saving to localStorage
     const encrypted = encryptData(data);
@@ -108,9 +111,15 @@ export const useFinancialData = () => {
       localStorage.setItem(STORAGE_KEY, encrypted);
     }
 
-    if (cloudUrl && initialLoadDoneRef.current) {
+    // SÓ envia se: tiver URL, o primeiro load terminou, e os dados são diferentes do último hash conhecido
+    if (
+      cloudUrl &&
+      initialLoadDoneRef.current &&
+      currentDataString !== previousDataHashRef.current
+    ) {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
       saveTimeoutRef.current = setTimeout(() => {
+        previousDataHashRef.current = currentDataString;
         syncToCloud();
       }, 2000);
     }

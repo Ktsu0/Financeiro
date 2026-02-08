@@ -9,6 +9,7 @@ import {
   RefreshCw,
   Check,
   AlertCircle,
+  X,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatCurrency } from "../utils";
@@ -237,17 +238,24 @@ const ExportButtons = ({
             ) : (
               <Cloud size={18} className="text-slate-500" />
             )}
-            <span className="text-xs sm:text-sm">
+            <span className="text-xs sm:text-sm hidden sm:inline">
               {cloudUrl ? "Nuvem Ativa" : "Configurar Nuvem"}
             </span>
           </motion.button>
 
           {cloudUrl && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20">
-              <Check size={12} className="text-primary" />
-              <span className="text-[10px] font-bold text-primary uppercase tracking-wider">
+            <div className="flex items-center gap-1.5 px-2 py-1.5 sm:px-3 rounded-full bg-primary/10 border border-primary/20">
+              <Check size={14} className="text-primary" />
+              <span className="text-[10px] font-bold text-primary uppercase tracking-wider hidden sm:inline">
                 Sincronizado
               </span>
+              <button
+                onClick={() => onUpdateCloudUrl("")}
+                className="ml-0.5 sm:ml-1 p-0.5 hover:bg-primary/20 rounded-full transition-colors group"
+                title="Desconectar Nuvem"
+              >
+                <X size={10} className="text-primary" />
+              </button>
             </div>
           )}
         </div>
@@ -302,45 +310,47 @@ const ExportButtons = ({
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             onSubmit={handleCloudSubmit}
-            className="overflow-hidden"
+            className="overflow-hidden w-full"
           >
-            <div className="glass-card p-4 rounded-xl border-primary/20 space-y-3">
+            <div className="glass-card p-[5%] rounded-2xl border-primary/20 space-y-4">
               <div className="flex items-start gap-3">
                 <AlertCircle
-                  size={18}
+                  size={20}
                   className="text-warning mt-0.5 flex-shrink-0"
                 />
-                <p className="text-xs text-slate-400 leading-relaxed">
+                <p className="text-[0.7rem] sm:text-xs text-slate-400 leading-relaxed">
                   Cole aqui a <b>URL do App da Web</b> gerada no Google Apps
                   Script. Isso ativará a sincronização automática com sua
                   planilha na nuvem.
                 </p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <input
                   type="url"
                   value={tempUrl}
                   onChange={(e) => setTempUrl(e.target.value)}
                   placeholder="https://script.google.com/macros/s/.../exec"
-                  className="flex-1 bg-black/40 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-primary outline-none transition-all"
+                  className="flex-1 bg-black/40 border border-slate-700 rounded-xl px-4 py-3 text-xs text-white focus:border-primary outline-none transition-all placeholder:text-slate-600"
                 />
-                <button
-                  type="submit"
-                  className="btn-primary py-2 px-4 text-xs rounded-lg"
-                >
-                  Salvar Link
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTempUrl("");
-                    onUpdateCloudUrl("");
-                    setShowCloudInput(false);
-                  }}
-                  className="px-3 py-2 text-xs text-slate-500 hover:text-destructive transition-colors"
-                >
-                  Remover
-                </button>
+                <div className="flex gap-2 w-full sm:w-auto">
+                  <button
+                    type="submit"
+                    className="flex-1 sm:flex-none btn-primary py-3 px-6 text-xs rounded-xl whitespace-nowrap"
+                  >
+                    Salvar Link
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTempUrl("");
+                      onUpdateCloudUrl("");
+                      setShowCloudInput(false);
+                    }}
+                    className="p-3 text-[0.7rem] text-slate-500 hover:text-destructive transition-colors bg-white/5 rounded-xl border border-white/5"
+                  >
+                    Limpar
+                  </button>
+                </div>
               </div>
             </div>
           </motion.form>
