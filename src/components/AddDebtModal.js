@@ -87,7 +87,7 @@ const AddDebtModal = ({ isOpen, onClose, onSubmit }) => {
         <form onSubmit={handleSubmit} className="space-y-6 relative">
           <div className="space-y-2">
             <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
-              Descrição do Compromisso
+              Descrição
             </label>
             <div className="relative">
               <Target

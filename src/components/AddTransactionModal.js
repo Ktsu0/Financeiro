@@ -90,7 +90,7 @@ const AddTransactionModal = ({ isOpen, onClose, onSubmit }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-1">
-                Nome
+                Descrição
               </label>
               <div className="relative">
                 <Tag
@@ -107,28 +107,6 @@ const AddTransactionModal = ({ isOpen, onClose, onSubmit }) => {
                   className="bg-white/5 border border-white/10 text-white placeholder:text-white/20 focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-2xl h-[3.5rem] pl-12 pr-4 w-full transition-all outline-none"
                   placeholder="Ex: Aluguel"
                   data-testid="expense-name-input"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-1">
-                Categoria
-              </label>
-              <div className="relative">
-                <LayoutGrid
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
-                  size={18}
-                />
-                <input
-                  type="text"
-                  required
-                  value={formData.category}
-                  onChange={(e) =>
-                    setFormData({ ...formData, category: e.target.value })
-                  }
-                  className="bg-white/5 border border-white/10 text-white placeholder:text-white/20 focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-2xl h-[3.5rem] pl-12 pr-4 w-full transition-all outline-none"
-                  placeholder="Ex: Moradia"
                 />
               </div>
             </div>

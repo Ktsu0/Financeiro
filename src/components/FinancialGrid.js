@@ -93,9 +93,6 @@ const FinancialGrid = React.memo(
                         <p className="text-sm font-bold text-white leading-tight">
                           {expense.name}
                         </p>
-                        <p className="text-[9px] uppercase font-black tracking-widest text-muted-foreground/60">
-                          {expense.category}
-                        </p>
                       </div>
                     </div>
                     <button
@@ -156,7 +153,7 @@ const FinancialGrid = React.memo(
             <thead>
               <tr className="text-left">
                 <th className="pb-4 px-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
-                  Nome & Categoria
+                  Descrição
                 </th>
                 <th className="pb-4 px-4 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
                   Valor
@@ -231,13 +228,10 @@ const FinancialGrid = React.memo(
                                 autoFocus
                               />
                             ) : (
-                              <p className="text-sm font-bold text-white leading-none mb-1">
+                              <p className="text-sm font-bold text-white leading-none">
                                 {expense.name}
                               </p>
                             )}
-                            <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground/60">
-                              {expense.category}
-                            </p>
                           </div>
                         </div>
                       </td>
