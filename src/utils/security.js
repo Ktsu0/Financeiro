@@ -2,8 +2,7 @@ import CryptoJS from "crypto-js";
 
 // Chave padrão para criptografia local (ofuscação).
 // Em um cenário real, isso viria de uma variável de ambiente ou derivada de login do usuário.
-const SECRET_KEY =
-  process.env.REACT_APP_DATA_ENCRYPTION_KEY || "financeiro-app-secret-v1";
+const SECRET_KEY = process.env.REACT_APP_DATA_ENCRYPTION_KEY;
 
 /**
  * Criptografa um objeto ou string para armazenamento seguro.

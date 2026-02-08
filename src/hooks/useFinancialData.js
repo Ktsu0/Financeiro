@@ -7,8 +7,7 @@ import { encryptData, decryptData, validateSyncUrl } from "../utils/security";
 const STORAGE_KEY = "@financeiro_v1_data";
 const CLOUD_URL_KEY = "@financeiro_cloud_url";
 const PET_VISIBILITY_KEY = "@financeiro_show_pet";
-const GOOGLE_SCRIPT_TOKEN =
-  process.env.REACT_APP_GOOGLE_APPS_SCRIPT_TOKEN || "07102024";
+const GOOGLE_SCRIPT_TOKEN = process.env.REACT_APP_GOOGLE_APPS_SCRIPT_TOKEN;
 
 const initialData = {
   expenses: [],
@@ -34,64 +33,32 @@ export const useFinancialData = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const saveTimeoutRef = useRef(null);
 
-  // Persistence Local & Auto-sync (Push)
-  useEffect(() => {
-    // Encrypt data before saving to localStorage
-    const encrypted = encryptData(data);
-    if (encrypted) {
-      localStorage.setItem(STORAGE_KEY, encrypted);
-    }
-
-    if (cloudUrl) {
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-      saveTimeoutRef.current = setTimeout(() => {
-        syncToCloud();
-      }, 2000);
-    }
-  }, [data, cloudUrl]);
-
-  // Multi-device Sync (Pull)
-  useEffect(() => {
-    if (!cloudUrl) return;
-
-    // Busca inicial ao carregar ou mudar a URL
-    loadFromCloud();
-
-    // Polling a cada 30 segundos para manter dispositivos em sincronia
-    const pollInterval = setInterval(() => {
-      if (!isSyncing) {
-        // Evita buscar enquanto está enviando
-        loadFromCloud();
-      }
-    }, 30000);
-
-    return () => clearInterval(pollInterval);
-  }, [cloudUrl, loadFromCloud]);
-
   const { expenses, debts, incomes } = data;
 
   // Cloud Actions
-  const syncToCloud = async (targetUrl = cloudUrl) => {
-    if (!targetUrl) return;
+  const syncToCloud = useCallback(
+    async (targetUrl = cloudUrl) => {
+      if (!targetUrl) return;
 
-    if (!validateSyncUrl(targetUrl)) {
-      console.warn("URL insegura ou inválida para sync:", targetUrl);
-      return;
-    }
-    try {
-      setIsSyncing(true);
-      // Inclui token de seguranca no payload
-      const payload = { ...data, token: GOOGLE_SCRIPT_TOKEN };
+      if (!validateSyncUrl(targetUrl)) {
+        console.warn("URL insegura ou inválida para sync:", targetUrl);
+        return;
+      }
+      try {
+        setIsSyncing(true);
+        const payload = { ...data, token: GOOGLE_SCRIPT_TOKEN };
 
-      await axios.post(targetUrl, JSON.stringify(payload), {
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-      });
-    } catch (error) {
-      console.error("Cloud Sync Error:", error);
-    } finally {
-      setIsSyncing(false);
-    }
-  };
+        await axios.post(targetUrl, JSON.stringify(payload), {
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+        });
+      } catch (error) {
+        console.error("Cloud Sync Error:", error);
+      } finally {
+        setIsSyncing(false);
+      }
+    },
+    [cloudUrl, data],
+  );
 
   const loadFromCloud = useCallback(
     async (targetUrl = cloudUrl) => {
@@ -112,6 +79,40 @@ export const useFinancialData = () => {
     },
     [cloudUrl],
   );
+
+  // Persistence Local & Auto-sync (Push)
+  useEffect(() => {
+    // Encrypt data before saving to localStorage
+    const encrypted = encryptData(data);
+    if (encrypted) {
+      localStorage.setItem(STORAGE_KEY, encrypted);
+    }
+
+    if (cloudUrl) {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = setTimeout(() => {
+        syncToCloud();
+      }, 2000);
+    }
+  }, [data, cloudUrl, syncToCloud]);
+
+  // Multi-device Sync (Pull)
+  useEffect(() => {
+    if (!cloudUrl) return;
+
+    // Busca inicial ao carregar ou mudar a URL
+    loadFromCloud();
+
+    // Polling a cada 30 segundos para manter dispositivos em sincronia
+    const pollInterval = setInterval(() => {
+      if (!isSyncing) {
+        // Evita buscar enquanto está enviando
+        loadFromCloud();
+      }
+    }, 30000);
+
+    return () => clearInterval(pollInterval);
+  }, [cloudUrl, loadFromCloud, isSyncing]);
 
   const updateCloudUrl = (url) => {
     if (url && !validateSyncUrl(url)) {
