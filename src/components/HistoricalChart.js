@@ -298,8 +298,13 @@ const HistoricalChart = React.memo(({ expenses, incomes }) => {
           </button>
         </div>
 
-        <div className="h-[250px] sm:h-[300px] lg:h-[320px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
+        <div className="h-[250px] sm:h-[300px] lg:h-[320px] w-full relative overflow-hidden">
+          <ResponsiveContainer
+            width="99%"
+            height="100%"
+            minWidth={0}
+            minHeight={0}
+          >
             <BarChart
               data={historicalData}
               margin={{ top: 0, right: 0, left: -20, bottom: 0 }}

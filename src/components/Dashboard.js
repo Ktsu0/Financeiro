@@ -38,7 +38,7 @@ const staggerContainer = {
 
 const Dashboard = () => {
   const { data, loading, actions } = useFinancialData();
-  const { expenses, debts, incomes, summary } = data;
+  const { expenses, debts, incomes, summary, showPet } = data;
 
   const [modals, setModals] = useState({
     expense: false,
@@ -219,8 +219,15 @@ const Dashboard = () => {
         </motion.div>
       </main>
 
+      {/* Persistence/Version Footer */}
+      <footer className="mt-auto py-8 flex justify-center w-full relative z-10">
+        <p className="text-[10px] text-slate-600 uppercase font-black tracking-[0.2em] text-center">
+          Meu Financeiro v2.0 • 100% Local & Seguro
+        </p>
+      </footer>
+
       {/* Floating Pet */}
-      <FinancialPet summary={summary} />
+      {showPet && <FinancialPet summary={summary} />}
 
       {/* Modals */}
       <AnimatePresence mode="wait">
@@ -263,6 +270,8 @@ const Dashboard = () => {
             incomes={incomes}
             cloudUrl={data.cloudUrl}
             isSyncing={data.isSyncing}
+            showPet={showPet}
+            onUpdatePetVisibility={actions.updatePetVisibility}
             onUpdateCloudUrl={actions.updateCloudUrl}
             onExportJSON={actions.exportData}
             onImportJSON={actions.importData}

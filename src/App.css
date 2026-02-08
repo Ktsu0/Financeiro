@@ -4,16 +4,14 @@
   background-color: #000000;
 }
 
-/* Remove any default centered text alignment */
-.App * {
-  text-align: left;
-}
-
 /* Smooth transitions for interactive elements */
 button,
 a,
 .interactive {
-  transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.3s ease;
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease,
+    box-shadow 0.3s ease;
 }
 
 button:hover,

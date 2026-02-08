@@ -92,8 +92,13 @@ const Sidebar = React.memo(({ expenses, debts, summary }) => {
             </p>
           </div>
         ) : (
-          <div className="h-[280px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-[280px] w-full relative overflow-hidden">
+            <ResponsiveContainer
+              width="99%"
+              height="100%"
+              minWidth={0}
+              minHeight={0}
+            >
               <PieChart>
                 <Pie
                   data={categoryData}

@@ -8,6 +8,7 @@ import {
   Download,
   Upload,
   ShieldCheck,
+  Sparkles,
 } from "lucide-react";
 import ExportButtons from "./ExportButtons";
 
@@ -20,6 +21,8 @@ const SettingsModal = ({
   cloudUrl,
   isSyncing,
   onUpdateCloudUrl,
+  showPet,
+  onUpdatePetVisibility,
   onExportJSON,
   onImportJSON,
 }) => {
@@ -39,10 +42,11 @@ const SettingsModal = ({
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9, y: 20 }}
-        className="relative w-full max-w-2xl glass-card rounded-[2.5rem] p-8 overflow-hidden shadow-2xl border border-white/10 flex flex-col"
+        className="relative w-full max-w-2xl max-h-[85vh] glass-card rounded-[2.5rem] p-8 overflow-hidden shadow-2xl border border-white/10 flex flex-col"
       >
         <div className="absolute top-0 right-0 -mr-16 -mt-16 w-48 h-48 bg-primary/10 rounded-full blur-3xl" />
 
+        {/* Header - Fixed at top */}
         <div className="flex items-center justify-between mb-8 relative shrink-0">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-primary/10 rounded-2xl">
@@ -65,7 +69,8 @@ const SettingsModal = ({
           </button>
         </div>
 
-        <div className="space-y-8 relative">
+        {/* Scrollable Content Area */}
+        <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-8 relative">
           {/* Information Section */}
           <section className="bg-white/5 border border-white/5 rounded-3xl p-6">
             <div className="flex items-center gap-3 mb-4">
@@ -79,6 +84,34 @@ const SettingsModal = ({
               padrão. Para maior segurança e acesso em outros dispositivos,
               configure a sincronização com a nuvem abaixo.
             </p>
+          </section>
+
+          {/* Personalization Section */}
+          <section className="bg-white/5 border border-white/5 rounded-3xl p-6">
+            <div className="flex items-center justify-between font-body">
+              <div className="flex items-center gap-3">
+                <Sparkles className="text-primary" size={20} />
+                <div>
+                  <h3 className="text-lg font-bold text-white">
+                    Assistente Visual
+                  </h3>
+                  <p className="text-sm text-slate-400">
+                    Ativar o pet animado no dashboard
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => onUpdatePetVisibility(!showPet)}
+                className={`w-14 h-7 rounded-full transition-all duration-300 relative ${
+                  showPet ? "bg-primary" : "bg-white/10"
+                }`}
+              >
+                <motion.div
+                  animate={{ x: showPet ? 30 : 4 }}
+                  className="absolute top-1 w-5 h-5 bg-white rounded-full shadow-lg"
+                />
+              </button>
+            </div>
           </section>
 
           {/* Tools Section */}
@@ -100,8 +133,8 @@ const SettingsModal = ({
             </div>
           </section>
 
-          <footer className="pt-4 text-center">
-            <p className="text-[10px] text-slate-600 uppercase font-black tracking-[0.2em]">
+          <footer className="pt-4 flex justify-center w-full">
+            <p className="text-[10px] text-slate-600 uppercase font-black tracking-[0.2em] text-center w-full">
               Meu Financeiro v2.0 • 100% Local & Seguro
             </p>
           </footer>

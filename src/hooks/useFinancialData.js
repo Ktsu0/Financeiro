@@ -1,9 +1,14 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { toast } from "sonner";
 import axios from "axios";
+import { addMonths, parse, format, isValid } from "date-fns";
+import { encryptData, decryptData, validateSyncUrl } from "../utils/security";
 
 const STORAGE_KEY = "@financeiro_v1_data";
 const CLOUD_URL_KEY = "@financeiro_cloud_url";
+const PET_VISIBILITY_KEY = "@financeiro_show_pet";
+const GOOGLE_SCRIPT_TOKEN =
+  process.env.REACT_APP_GOOGLE_APPS_SCRIPT_TOKEN || "07102024";
 
 const initialData = {
   expenses: [],
@@ -14,11 +19,16 @@ const initialData = {
 export const useFinancialData = () => {
   const [data, setData] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : initialData;
+    // Tenta decifrar. Se falhar ou for nulo, usa dados iniciais.
+    const decrypted = saved ? decryptData(saved) : null;
+    return decrypted || initialData;
   });
 
   const [cloudUrl, setCloudUrl] = useState(
     () => localStorage.getItem(CLOUD_URL_KEY) || "",
+  );
+  const [showPet, setShowPet] = useState(
+    () => localStorage.getItem(PET_VISIBILITY_KEY) !== "false",
   );
   const [loading, setLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -26,7 +36,11 @@ export const useFinancialData = () => {
 
   // Persistence Local & Auto-sync
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    // Encrypt data before saving to localStorage
+    const encrypted = encryptData(data);
+    if (encrypted) {
+      localStorage.setItem(STORAGE_KEY, encrypted);
+    }
 
     if (cloudUrl) {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
@@ -41,9 +55,17 @@ export const useFinancialData = () => {
   // Cloud Actions
   const syncToCloud = async (targetUrl = cloudUrl) => {
     if (!targetUrl) return;
+
+    if (!validateSyncUrl(targetUrl)) {
+      console.warn("URL insegura ou inválida para sync:", targetUrl);
+      return;
+    }
     try {
       setIsSyncing(true);
-      await axios.post(targetUrl, JSON.stringify(data), {
+      // Inclui token de seguranca no payload
+      const payload = { ...data, token: GOOGLE_SCRIPT_TOKEN };
+
+      await axios.post(targetUrl, JSON.stringify(payload), {
         headers: { "Content-Type": "text/plain;charset=utf-8" },
       });
     } catch (error) {
@@ -74,6 +96,11 @@ export const useFinancialData = () => {
   );
 
   const updateCloudUrl = (url) => {
+    if (url && !validateSyncUrl(url)) {
+      toast.error("URL inválida! Use HTTPS ou localhost.");
+      return;
+    }
+
     localStorage.setItem(CLOUD_URL_KEY, url);
     setCloudUrl(url);
     if (url) {
@@ -82,6 +109,11 @@ export const useFinancialData = () => {
     } else {
       toast.info("Sincronização desativada");
     }
+  };
+
+  const updatePetVisibility = (visible) => {
+    localStorage.setItem(PET_VISIBILITY_KEY, visible.toString());
+    setShowPet(visible);
   };
 
   // Summary Calculation
@@ -233,15 +265,18 @@ export const useFinancialData = () => {
 
       const incrementMonth = (dateStr) => {
         try {
-          const [d, m, y] = dateStr.split("/").map(Number);
-          let newM = m + 1;
-          let newY = y;
-          if (newM > 12) {
-            newM = 1;
-            newY += 1;
-          }
-          return `${String(d).padStart(2, "0")}/${String(newM).padStart(2, "0")}/${newY}`;
+          // Parse string "DD/MM/YYYY" to Date object
+          const date = parse(dateStr, "dd/MM/yyyy", new Date());
+
+          if (!isValid(date)) return dateStr;
+
+          // Add 1 month safely (handles leap years and different month lengths)
+          const newDate = addMonths(date, 1);
+
+          // Format back to "DD/MM/YYYY"
+          return format(newDate, "dd/MM/yyyy");
         } catch (e) {
+          console.error("Date error:", e);
           return dateStr;
         }
       };
@@ -305,7 +340,7 @@ export const useFinancialData = () => {
   }, []);
 
   return {
-    data: { expenses, debts, incomes, summary, cloudUrl, isSyncing },
+    data: { expenses, debts, incomes, summary, cloudUrl, isSyncing, showPet },
     loading,
     actions: {
       fetchData: loadFromCloud,
@@ -322,6 +357,7 @@ export const useFinancialData = () => {
       exportData,
       importData,
       updateCloudUrl,
+      updatePetVisibility,
       forceSync: syncToCloud,
     },
   };
