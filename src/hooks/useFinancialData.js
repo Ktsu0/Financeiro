@@ -32,6 +32,12 @@ export const useFinancialData = () => {
   const [loading, setLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const saveTimeoutRef = useRef(null);
+  const isSyncingRef = useRef(false);
+
+  // Sync ref with state
+  useEffect(() => {
+    isSyncingRef.current = isSyncing;
+  }, [isSyncing]);
 
   const { expenses, debts, incomes } = data;
 
@@ -60,21 +66,32 @@ export const useFinancialData = () => {
     [cloudUrl, data],
   );
 
+  const previousDataHashRef = useRef("");
+  const initialLoadDoneRef = useRef(false);
+
   const loadFromCloud = useCallback(
-    async (targetUrl = cloudUrl) => {
+    async (targetUrl = cloudUrl, silent = false) => {
       if (!targetUrl) return;
       try {
-        setLoading(true);
+        if (!silent) setLoading(true);
         const response = await axios.get(targetUrl);
+
         if (response.data && response.data.expenses) {
-          setData(response.data);
-          toast.success("Dados carregados da nuvem!");
+          const newDataString = JSON.stringify(response.data);
+
+          // Só atualiza se os dados forem realmente diferentes
+          if (newDataString !== previousDataHashRef.current) {
+            previousDataHashRef.current = newDataString;
+            setData(response.data);
+            if (!silent) toast.success("Dados carregados da nuvem!");
+          }
         }
+        initialLoadDoneRef.current = true;
       } catch (error) {
         console.error("Load Error:", error);
-        toast.error("Erro ao buscar dados da nuvem");
+        if (!silent) toast.error("Erro ao buscar dados da nuvem");
       } finally {
-        setLoading(false);
+        if (!silent) setLoading(false);
       }
     },
     [cloudUrl],
@@ -82,13 +99,16 @@ export const useFinancialData = () => {
 
   // Persistence Local & Auto-sync (Push)
   useEffect(() => {
+    // Atualiza o hash local sempre que o data mudar por ação do usuário
+    previousDataHashRef.current = JSON.stringify(data);
+
     // Encrypt data before saving to localStorage
     const encrypted = encryptData(data);
     if (encrypted) {
       localStorage.setItem(STORAGE_KEY, encrypted);
     }
 
-    if (cloudUrl) {
+    if (cloudUrl && initialLoadDoneRef.current) {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
       saveTimeoutRef.current = setTimeout(() => {
         syncToCloud();
@@ -100,19 +120,18 @@ export const useFinancialData = () => {
   useEffect(() => {
     if (!cloudUrl) return;
 
-    // Busca inicial ao carregar ou mudar a URL
-    loadFromCloud();
+    // Busca inicial ao carregar (com loading visível)
+    loadFromCloud(cloudUrl, false);
 
-    // Polling a cada 30 segundos para manter dispositivos em sincronia
+    // Polling a cada 30 segundos (em silêncio, sem travar a tela)
     const pollInterval = setInterval(() => {
-      if (!isSyncing) {
-        // Evita buscar enquanto está enviando
-        loadFromCloud();
+      if (!isSyncingRef.current) {
+        loadFromCloud(cloudUrl, true);
       }
     }, 30000);
 
     return () => clearInterval(pollInterval);
-  }, [cloudUrl, loadFromCloud, isSyncing]);
+  }, [cloudUrl, loadFromCloud]);
 
   const updateCloudUrl = (url) => {
     if (url && !validateSyncUrl(url)) {
