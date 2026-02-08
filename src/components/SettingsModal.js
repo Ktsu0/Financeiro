@@ -42,44 +42,44 @@ const SettingsModal = ({
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9, y: 20 }}
-        className="relative w-full max-w-2xl max-h-[85vh] glass-card rounded-[2.5rem] p-8 overflow-hidden shadow-2xl border border-white/10 flex flex-col"
+        className="relative w-full max-w-2xl max-h-[90vh] sm:max-h-[85vh] glass-card rounded-[1.5rem] sm:rounded-[2.5rem] p-5 sm:p-8 overflow-hidden shadow-2xl border border-white/10 flex flex-col"
       >
         <div className="absolute top-0 right-0 -mr-16 -mt-16 w-48 h-48 bg-primary/10 rounded-full blur-3xl" />
 
         {/* Header - Fixed at top */}
-        <div className="flex items-center justify-between mb-8 relative shrink-0">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-primary/10 rounded-2xl">
-              <Settings className="text-primary" size={24} />
+        <div className="flex items-center justify-between mb-6 sm:mb-8 relative shrink-0">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="p-2.5 sm:p-3 bg-primary/10 rounded-xl sm:rounded-2xl">
+              <Settings className="text-primary" size={20} sm={24} />
             </div>
             <div>
-              <h2 className="text-2xl font-black font-heading text-white tracking-tight">
+              <h2 className="text-xl sm:text-2xl font-black font-heading text-white tracking-tight">
                 Configurações
               </h2>
-              <p className="text-muted-foreground text-sm mt-1">
+              <p className="text-muted-foreground text-[10px] sm:text-sm mt-0.5 sm:mt-1">
                 Gerencie seus dados e sincronização
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-3 bg-white/5 hover:bg-white/10 rounded-2xl text-white transition-all"
+            className="p-2.5 sm:p-3 bg-white/5 hover:bg-white/10 rounded-xl sm:rounded-2xl text-white transition-all"
           >
-            <X size={20} strokeWidth={3} />
+            <X size={18} sm={20} strokeWidth={3} />
           </button>
         </div>
 
         {/* Scrollable Content Area */}
-        <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-8 relative">
+        <div className="flex-1 overflow-y-auto pr-1 sm:pr-2 custom-scrollbar space-y-6 sm:space-y-8 relative">
           {/* Information Section */}
-          <section className="bg-white/5 border border-white/5 rounded-3xl p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <ShieldCheck className="text-primary" size={20} />
-              <h3 className="text-lg font-bold text-white">
+          <section className="bg-white/5 border border-white/5 rounded-2xl sm:rounded-3xl p-5 sm:p-6">
+            <div className="flex items-center gap-3 mb-3 sm:mb-4">
+              <ShieldCheck className="text-primary" size={18} sm={20} />
+              <h3 className="text-base sm:text-lg font-bold text-white">
                 Privacidade e Dados
               </h3>
             </div>
-            <p className="text-sm text-slate-400 leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
               Suas informações são armazenadas localmente no seu navegador por
               padrão. Para maior segurança e acesso em outros dispositivos,
               configure a sincronização com a nuvem abaixo.
@@ -87,39 +87,41 @@ const SettingsModal = ({
           </section>
 
           {/* Personalization Section */}
-          <section className="bg-white/5 border border-white/5 rounded-3xl p-6">
-            <div className="flex items-center justify-between font-body">
-              <div className="flex items-center gap-3">
-                <Sparkles className="text-primary" size={20} />
-                <div>
-                  <h3 className="text-lg font-bold text-white">
+          <section className="bg-white/5 border border-white/5 rounded-2xl sm:rounded-3xl p-5 sm:p-6">
+            <div className="flex items-center justify-between font-body gap-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <Sparkles className="text-primary shrink-0" size={18} sm={20} />
+                <div className="min-w-0">
+                  <h3 className="text-base sm:text-lg font-bold text-white truncate">
                     Assistente Visual
                   </h3>
-                  <p className="text-sm text-slate-400">
-                    Ativar o pet animado no dashboard
+                  <p className="text-xs sm:text-sm text-slate-400 truncate">
+                    Ativar o pet animado
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => onUpdatePetVisibility(!showPet)}
-                className={`w-14 h-7 rounded-full transition-all duration-300 relative ${
+                className={`w-12 sm:w-14 h-6 sm:h-7 rounded-full transition-all duration-300 relative shrink-0 ${
                   showPet ? "bg-primary" : "bg-white/10"
                 }`}
               >
                 <motion.div
-                  animate={{ x: showPet ? 30 : 4 }}
-                  className="absolute top-1 w-5 h-5 bg-white rounded-full shadow-lg"
+                  animate={{
+                    x: showPet ? (window.innerWidth < 640 ? 24 : 30) : 4,
+                  }}
+                  className="absolute top-1 w-4 sm:w-5 h-4 sm:h-5 bg-white rounded-full shadow-lg"
                 />
               </button>
             </div>
           </section>
 
           {/* Tools Section */}
-          <section className="space-y-4">
-            <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground px-2">
+          <section className="space-y-3 sm:space-y-4">
+            <h3 className="text-[10px] sm:text-sm font-bold uppercase tracking-widest text-muted-foreground px-2">
               Exportação e Backup
             </h3>
-            <div className="bg-white/5 border border-white/5 rounded-3xl p-6">
+            <div className="bg-white/5 border border-white/5 rounded-2xl sm:rounded-3xl p-4 sm:p-6">
               <ExportButtons
                 expenses={expenses}
                 debts={debts}
@@ -133,8 +135,8 @@ const SettingsModal = ({
             </div>
           </section>
 
-          <footer className="pt-4 flex justify-center w-full">
-            <p className="text-[10px] text-slate-600 uppercase font-black tracking-[0.2em] text-center w-full">
+          <footer className="pt-2 sm:pt-4 flex justify-center w-full">
+            <p className="text-[9px] sm:text-[10px] text-slate-600 uppercase font-black tracking-[0.2em] text-center w-full">
               Meu Financeiro v2.0 • 100% Local & Seguro
             </p>
           </footer>

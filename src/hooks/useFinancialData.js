@@ -34,7 +34,7 @@ export const useFinancialData = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const saveTimeoutRef = useRef(null);
 
-  // Persistence Local & Auto-sync
+  // Persistence Local & Auto-sync (Push)
   useEffect(() => {
     // Encrypt data before saving to localStorage
     const encrypted = encryptData(data);
@@ -49,6 +49,24 @@ export const useFinancialData = () => {
       }, 2000);
     }
   }, [data, cloudUrl]);
+
+  // Multi-device Sync (Pull)
+  useEffect(() => {
+    if (!cloudUrl) return;
+
+    // Busca inicial ao carregar ou mudar a URL
+    loadFromCloud();
+
+    // Polling a cada 30 segundos para manter dispositivos em sincronia
+    const pollInterval = setInterval(() => {
+      if (!isSyncing) {
+        // Evita buscar enquanto está enviando
+        loadFromCloud();
+      }
+    }, 30000);
+
+    return () => clearInterval(pollInterval);
+  }, [cloudUrl, loadFromCloud]);
 
   const { expenses, debts, incomes } = data;
 

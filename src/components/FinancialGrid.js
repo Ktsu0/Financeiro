@@ -64,7 +64,94 @@ const FinancialGrid = React.memo(
           </div>
         </div>
 
-        <div className="overflow-x-auto -mx-8 px-8">
+        {/* Mobile View: Cards */}
+        <div className="md:hidden space-y-4">
+          {expenses.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 bg-white/5 rounded-2xl border border-dashed border-white/10">
+              <Tag
+                size={24}
+                className="text-muted-foreground opacity-20 mb-2"
+              />
+              <p className="text-muted-foreground text-xs">
+                Nenhuma despesa para exibir.
+              </p>
+            </div>
+          ) : (
+            <AnimatePresence mode="popLayout">
+              {expenses.map((expense) => (
+                <motion.div
+                  layout
+                  key={expense.id}
+                  className="bg-white/5 rounded-2xl p-4 border border-white/5 space-y-3"
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center">
+                        <Tag size={14} className="text-muted-foreground" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-white leading-tight">
+                          {expense.name}
+                        </p>
+                        <p className="text-[9px] uppercase font-black tracking-widest text-muted-foreground/60">
+                          {expense.category}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleToggleStatus(expense)}
+                      className={`px-2 py-1 rounded-full text-[8px] font-black uppercase tracking-wider ${
+                        expense.status === "paid"
+                          ? "bg-primary/20 text-primary"
+                          : "bg-destructive/20 text-destructive"
+                      }`}
+                    >
+                      {expense.status === "paid" ? "Pago" : "Pendente"}
+                    </button>
+                  </div>
+
+                  <div className="flex justify-between items-end border-t border-white/5 pt-3">
+                    <div>
+                      <p className="text-[9px] uppercase font-black text-muted-foreground mb-1">
+                        Valor
+                      </p>
+                      <p className="text-base font-black font-mono text-white">
+                        {formatCurrency(expense.value)}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[9px] uppercase font-black text-muted-foreground mb-1">
+                        Vencimento
+                      </p>
+                      <div className="flex items-center gap-1 text-[10px] text-white/50">
+                        <Calendar size={10} />
+                        <span>{expense.due_date}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-2">
+                    <button
+                      onClick={() => handleEdit(expense)}
+                      className="p-2 bg-white/5 rounded-lg text-slate-400"
+                    >
+                      <Edit2 size={14} />
+                    </button>
+                    <button
+                      onClick={() => onDeleteExpense(expense.id)}
+                      className="p-2 bg-destructive/10 rounded-lg text-destructive/60"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          )}
+        </div>
+
+        {/* Desktop View: Table */}
+        <div className="hidden md:block overflow-x-auto -mx-8 px-8">
           <table className="w-full border-separate border-spacing-y-3">
             <thead>
               <tr className="text-left">
