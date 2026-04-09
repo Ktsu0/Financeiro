@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import axios from "axios";
 import { addMonths, parse, format, isValid } from "date-fns";
 import { encryptData, decryptData, validateSyncUrl } from "../utils/security";
+import { parseDate } from "../utils";
 
 const STORAGE_KEY = "@financeiro_v1_data";
 const CLOUD_URL_KEY = "@financeiro_cloud_url";
@@ -173,37 +174,12 @@ export const useFinancialData = () => {
 
     const filterByMonth = (items, dateKey) =>
       items.filter((item) => {
-        try {
-          const dateStr = item[dateKey];
-          if (!dateStr) return false;
-
-          let parsedDate = null;
-          // Format list commonly used in Google Sheets/JSON
-          const formats = ["dd/MM/yyyy", "yyyy-MM-dd", "MM/dd/yyyy", "dd-MM-yyyy"];
-
-          for (const fmt of formats) {
-            const date = parse(dateStr, fmt, new Date());
-            if (isValid(date)) {
-              parsedDate = date;
-              break;
-            }
-          }
-
-          // Fallback to native Date for ISO strings
-          if (!parsedDate) {
-            const native = new Date(dateStr);
-            if (isValid(native)) parsedDate = native;
-          }
-
-          if (!parsedDate) return false;
-
-          return (
-            parsedDate.getMonth() + 1 === targetMonth &&
-            parsedDate.getFullYear() === targetYear
-          );
-        } catch (e) {
-          return false;
-        }
+        const parsedDate = parseDate(item[dateKey]);
+        if (!parsedDate) return false;
+        return (
+          parsedDate.getMonth() + 1 === targetMonth &&
+          parsedDate.getFullYear() === targetYear
+        );
       });
 
     return {

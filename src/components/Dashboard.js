@@ -6,7 +6,6 @@ import {
   CreditCard,
   LayoutGrid,
   CalendarRange,
-  Calculator,
 } from "lucide-react";
 import { useFinancialData } from "../hooks/useFinancialData";
 
@@ -22,7 +21,6 @@ import AddIncomeModal from "./AddIncomeModal";
 import ManageIncomesModal from "./ManageIncomesModal";
 import SettingsModal from "./SettingsModal";
 import FinancialPet from "./FinancialPet";
-import ExpenseCalculatorModal from "./ExpenseCalculatorModal";
 
 // Optimized animation variants
 const fadeInUp = {
@@ -59,7 +57,6 @@ const Dashboard = () => {
     manageIncomes: false,
     settings: false,
     analysis: false,
-    calculator: false,
   });
 
   const toggleModal = (modal, value) => {
@@ -110,13 +107,6 @@ const Dashboard = () => {
         icon: CreditCard,
         onClick: () => toggleModal("debt", true),
         className: "btn-destructive",
-      },
-      {
-        label: "Calculadora",
-        icon: Calculator,
-        onClick: () => toggleModal("calculator", true),
-        className: "btn-base bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500 hover:text-white",
-        title: "Some despesas específicas para ver o total",
       },
     ],
     [actions.rollMonth],
@@ -366,13 +356,6 @@ const Dashboard = () => {
             expenses={expenses}
             incomes={incomes}
             debts={debts}
-          />
-        )}
-        {modals.calculator && (
-          <ExpenseCalculatorModal
-            isOpen={modals.calculator}
-            onClose={() => toggleModal("calculator", false)}
-            expenses={expenses}
           />
         )}
       </AnimatePresence>
