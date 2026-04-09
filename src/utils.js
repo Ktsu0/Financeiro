@@ -5,10 +5,21 @@ export const formatCurrency = (value) => {
   }).format(value);
 };
 
+import { parse, isValid } from "date-fns";
+
 export const parseDate = (dateStr) => {
+  if (!dateStr) return null;
   try {
-    const [day, month, year] = dateStr.split("/");
-    return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    const formats = ["dd/MM/yyyy", "yyyy-MM-dd", "MM/dd/yyyy", "dd-MM-yyyy"];
+    for (const f of formats) {
+      const parsed = parse(dateStr, f, new Date());
+      if (isValid(parsed)) return parsed;
+    }
+    
+    const native = new Date(dateStr);
+    if (isValid(native)) return native;
+    
+    return null;
   } catch {
     return null;
   }

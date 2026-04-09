@@ -6,6 +6,7 @@ import {
   CreditCard,
   LayoutGrid,
   CalendarRange,
+  Calculator,
 } from "lucide-react";
 import { useFinancialData } from "../hooks/useFinancialData";
 
@@ -14,12 +15,14 @@ import FinancialGrid from "./FinancialGrid";
 import Sidebar from "./Sidebar";
 import HistoricalChart from "./HistoricalChart";
 import DebtTracking from "./DebtTracking";
+import FullAnalysis from "./FullAnalysis";
 import AddTransactionModal from "./AddTransactionModal";
 import AddDebtModal from "./AddDebtModal";
 import AddIncomeModal from "./AddIncomeModal";
 import ManageIncomesModal from "./ManageIncomesModal";
 import SettingsModal from "./SettingsModal";
 import FinancialPet from "./FinancialPet";
+import ExpenseCalculatorModal from "./ExpenseCalculatorModal";
 
 // Optimized animation variants
 const fadeInUp = {
@@ -38,7 +41,16 @@ const staggerContainer = {
 
 const Dashboard = () => {
   const { data, loading, actions } = useFinancialData();
-  const { expenses, debts, incomes, summary, showPet } = data;
+  const {
+    expenses,
+    debts,
+    incomes,
+    filteredExpenses,
+    filteredIncomes,
+    summary,
+    showPet,
+    selectedMonth,
+  } = data;
 
   const [modals, setModals] = useState({
     expense: false,
@@ -46,6 +58,8 @@ const Dashboard = () => {
     income: false,
     manageIncomes: false,
     settings: false,
+    analysis: false,
+    calculator: false,
   });
 
   const toggleModal = (modal, value) => {
@@ -97,6 +111,13 @@ const Dashboard = () => {
         onClick: () => toggleModal("debt", true),
         className: "btn-destructive",
       },
+      {
+        label: "Calculadora",
+        icon: Calculator,
+        onClick: () => toggleModal("calculator", true),
+        className: "btn-base bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500 hover:text-white",
+        title: "Some despesas específicas para ver o total",
+      },
     ],
     [actions.rollMonth],
   );
@@ -125,6 +146,67 @@ const Dashboard = () => {
       />
 
       <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-12 -mt-4 sm:-mt-8 relative z-10">
+        {/* Month Selector & Analysis Button */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col sm:flex-row items-center justify-between mb-8 gap-4"
+        >
+          <div className="flex items-center gap-2 bg-white/5 p-1 rounded-2xl border border-white/5">
+            <button
+              onClick={() => {
+                const [y, m] = selectedMonth.split("-");
+                const date = new Date(parseInt(y), parseInt(m) - 1, 1);
+                date.setMonth(date.getMonth() - 1);
+                actions.setSelectedMonth(
+                  `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, "0")}`,
+                );
+              }}
+              className="p-2 hover:bg-white/10 rounded-xl text-white transition-all"
+            >
+              <Minus size={16} />
+            </button>
+            <div className="px-6 py-2 bg-primary/10 rounded-xl border border-primary/20 flex flex-col items-center min-w-[180px]">
+              <span className="text-[10px] uppercase font-black text-primary/60 tracking-widest leading-none mb-1">
+                Período Selecionado
+              </span>
+              <span className="text-sm font-black text-white capitalize leading-none">
+                {new Intl.DateTimeFormat("pt-BR", {
+                  month: "long",
+                  year: "numeric",
+                }).format(
+                  new Date(
+                    parseInt(selectedMonth.split("-")[0]),
+                    parseInt(selectedMonth.split("-")[1]) - 1,
+                    1,
+                  ),
+                )}
+              </span>
+            </div>
+            <button
+              onClick={() => {
+                const [y, m] = selectedMonth.split("-");
+                const date = new Date(parseInt(y), parseInt(m) - 1, 1);
+                date.setMonth(date.getMonth() + 1);
+                actions.setSelectedMonth(
+                  `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, "0")}`,
+                );
+              }}
+              className="p-2 hover:bg-white/10 rounded-xl text-white transition-all"
+            >
+              <Plus size={16} />
+            </button>
+          </div>
+
+          <button
+            onClick={() => toggleModal("analysis", true)}
+            className="btn-primary shimmer group flex items-center gap-3 px-10"
+          >
+            <LayoutGrid size={18} className="group-hover:rotate-90 transition-transform duration-500" />
+            <span className="uppercase tracking-widest font-black text-xs">Análise Completa</span>
+          </button>
+        </motion.div>
+
         <motion.div
           className="grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-6 lg:gap-8 items-start"
           variants={staggerContainer}
@@ -196,7 +278,7 @@ const Dashboard = () => {
             <div className="space-y-4 sm:space-y-6 lg:space-y-8">
               <motion.div variants={fadeInUp}>
                 <FinancialGrid
-                  expenses={expenses}
+                  expenses={filteredExpenses}
                   onUpdateExpense={actions.updateExpense}
                   onDeleteExpense={actions.deleteExpense}
                 />
@@ -214,7 +296,7 @@ const Dashboard = () => {
 
           {/* Sidebar - Responsive: Bottom on mobile, side on desktop */}
           <div className="xl:col-span-4 xl:sticky xl:top-8">
-            <Sidebar expenses={expenses} debts={debts} summary={summary} />
+            <Sidebar expenses={filteredExpenses} debts={debts} summary={summary} />
           </div>
         </motion.div>
       </main>
@@ -256,7 +338,7 @@ const Dashboard = () => {
           <ManageIncomesModal
             isOpen={modals.manageIncomes}
             onClose={() => toggleModal("manageIncomes", false)}
-            incomes={incomes}
+            incomes={filteredIncomes}
             onUpdateIncome={actions.updateIncome}
             onDeleteIncome={actions.deleteIncome}
           />
@@ -275,6 +357,22 @@ const Dashboard = () => {
             onUpdateCloudUrl={actions.updateCloudUrl}
             onExportJSON={actions.exportData}
             onImportJSON={actions.importData}
+          />
+        )}
+        {modals.analysis && (
+          <FullAnalysis
+            isOpen={modals.analysis}
+            onClose={() => toggleModal("analysis", false)}
+            expenses={expenses}
+            incomes={incomes}
+            debts={debts}
+          />
+        )}
+        {modals.calculator && (
+          <ExpenseCalculatorModal
+            isOpen={modals.calculator}
+            onClose={() => toggleModal("calculator", false)}
+            expenses={expenses}
           />
         )}
       </AnimatePresence>

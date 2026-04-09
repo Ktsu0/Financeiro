@@ -23,7 +23,7 @@ import {
 import { ptBR } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
 import { BarChart3, Settings, X, Check } from "lucide-react";
-import { formatCurrency } from "../utils";
+import { formatCurrency, parseDate } from "../utils";
 
 const HistoricalChart = React.memo(({ expenses, incomes }) => {
   const BASE_DATE = new Date(2026, 0, 1);
@@ -62,16 +62,10 @@ const HistoricalChart = React.memo(({ expenses, incomes }) => {
 
     // Adiciona meses que têm dados (despesas ou receitas)
     [...expenses, ...incomes].forEach((item) => {
-      try {
-        const dateStr = item.due_date || item.date;
-        const [day, month, year] = dateStr.split("/");
-        const itemDate = new Date(parseInt(year), parseInt(month) - 1, 1);
-
-        if (!isBefore(itemDate, BASE_DATE)) {
-          months.add(format(itemDate, "yyyy-MM"));
-        }
-      } catch (e) {
-        // Ignora datas inválidas
+      const dateStr = item.due_date || item.date;
+      const itemDate = parseDate(dateStr);
+      if (itemDate && !isBefore(itemDate, BASE_DATE)) {
+        months.add(format(itemDate, "yyyy-MM"));
       }
     });
 
@@ -131,14 +125,8 @@ const HistoricalChart = React.memo(({ expenses, incomes }) => {
       const monthIncome = incomes
         .filter((income) => {
           try {
-            const [day, m, y] = income.date.split("/");
-            const incomeDate = new Date(
-              parseInt(y),
-              parseInt(m) - 1,
-              parseInt(day),
-            );
-
-            if (isBefore(incomeDate, BASE_DATE)) return false;
+            const incomeDate = parseDate(income.date);
+            if (!incomeDate || isBefore(incomeDate, BASE_DATE)) return false;
 
             return isWithinInterval(incomeDate, {
               start: monthStart,
@@ -153,14 +141,8 @@ const HistoricalChart = React.memo(({ expenses, incomes }) => {
       const monthExpenses = expenses
         .filter((expense) => {
           try {
-            const [day, m, y] = expense.due_date.split("/");
-            const expenseDate = new Date(
-              parseInt(y),
-              parseInt(m) - 1,
-              parseInt(day),
-            );
-
-            if (isBefore(expenseDate, BASE_DATE)) return false;
+            const expenseDate = parseDate(expense.due_date);
+            if (!expenseDate || isBefore(expenseDate, BASE_DATE)) return false;
 
             return isWithinInterval(expenseDate, {
               start: monthStart,
@@ -314,18 +296,19 @@ const HistoricalChart = React.memo(({ expenses, incomes }) => {
                 stroke="rgba(255,255,255,0.03)"
                 vertical={false}
               />
-              <XAxis
-                dataKey="month"
-                axisLine={false}
-                tickLine={false}
-                tick={{
-                  fill: "rgba(255,255,255,0.4)",
-                  fontSize: 9,
-                  fontWeight: 700,
-                  textTransform: "uppercase",
-                }}
-                dy={10}
-              />
+                <XAxis
+                  dataKey="month"
+                  axisLine={false}
+                  tickLine={false}
+                  interval={0}
+                  tick={{
+                    fill: "rgba(255,255,255,0.4)",
+                    fontSize: 10,
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                  }}
+                  dy={10}
+                />
               <YAxis
                 axisLine={false}
                 tickLine={false}

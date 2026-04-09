@@ -134,75 +134,86 @@ const Sidebar = React.memo(({ expenses, debts, summary }) => {
         )}
       </motion.div>
 
-      {/* Debt Payoff Progress */}
+      {/* Debt Payoff Progress - Enhanced Gauge View */}
       <motion.div
         initial="hidden"
         animate="visible"
         transition={{ delay: 0.1 }}
         variants={itemVariants}
-        className="glass-card rounded-3xl p-8"
+        className="glass-card rounded-3xl p-8 relative overflow-hidden"
         data-testid="debt-progress-card"
       >
-        <div className="flex items-center gap-3 mb-8">
-          <div className="p-2 bg-blue-500/10 rounded-lg">
-            <Target size={20} className="text-blue-500" />
+        <div className="flex items-center gap-3 mb-6">
+          <div className="p-2 bg-blue-500/10 rounded-lg text-blue-500">
+            <Target size={20} />
           </div>
           <h3 className="text-xl font-bold font-heading text-white">
             Progresso Geral
           </h3>
         </div>
 
-        <div className="space-y-6">
-          <div className="space-y-3">
-            <div className="flex justify-between items-end">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1">
-                  Total Pago
-                </p>
-                <p
-                  className="text-2xl font-bold font-heading text-primary"
-                  data-testid="debt-paid-amount"
+        <div className="flex flex-col items-center">
+          {/* Circular Gauge */}
+          <div className="h-[180px] w-full relative flex items-center justify-center">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={[
+                    { name: "Pago", value: debtProgress },
+                    { name: "Restante", value: 100 - debtProgress }
+                  ]}
+                  cx="50%"
+                  cy="100%"
+                  startAngle={180}
+                  endAngle={0}
+                  innerRadius={70}
+                  outerRadius={100}
+                  paddingAngle={0}
+                  dataKey="value"
+                  stroke="none"
                 >
+                  <Cell fill="#22c55e" />
+                  <Cell fill="rgba(255,255,255,0.05)" />
+                </Pie>
+              </PieChart>
+            </ResponsiveContainer>
+            
+            <div className="absolute inset-0 flex flex-col items-center justify-end pb-2">
+              <span className="text-4xl font-black font-heading text-white leading-none">
+                {debtProgress.toFixed(0)}%
+              </span>
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mt-1">
+                Concluído
+              </span>
+            </div>
+          </div>
+
+          {/* Stats below gauge */}
+          <div className="w-full mt-6 space-y-4">
+            <div className="flex justify-between items-center p-4 bg-white/[0.03] rounded-2xl border border-white/5">
+              <div>
+                <p className="text-[10px] uppercase font-black tracking-widest text-white/30 mb-1">
+                  Total Liquidado
+                </p>
+                <p className="text-lg font-black font-heading text-primary">
                   {formatCurrency(totalPaidAmount)}
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1">
+                <p className="text-[10px] uppercase font-black tracking-widest text-white/30 mb-1">
                   Meta Total
                 </p>
-                <p
-                  className="text-lg font-bold font-heading text-white/50"
-                  data-testid="debt-total-amount"
-                >
+                <p className="text-sm font-bold font-heading text-white/60">
                   {formatCurrency(totalDebtAmount)}
                 </p>
               </div>
             </div>
 
-            <div className="relative pt-1">
-              <Progress
-                value={debtProgress}
-                className="h-3 rounded-full bg-white/5"
-                data-testid="debt-progress-bar"
-              />
-              <div
-                className="absolute top-0 right-0 -mt-1 mr-2 px-2 py-0.5 bg-primary text-primary-foreground text-[10px] font-bold rounded-full shadow-lg"
-                style={{ left: `${Math.min(debtProgress, 90)}%` }}
-              >
-                {debtProgress.toFixed(0)}%
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-6 border-t border-white/10">
-            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2">
-              Restante à Liquidar
-            </p>
-            <div className="flex items-baseline gap-2">
-              <p
-                className="text-3xl font-extrabold font-heading text-destructive"
-                data-testid="debt-remaining-amount"
-              >
+            <div className="p-4 bg-destructive/5 rounded-2xl border border-destructive/10">
+              <p className="text-[10px] uppercase font-black tracking-widest text-destructive/50 mb-1">
+                Ainda Restante
+              </p>
+              <p className="text-2xl font-black font-heading text-destructive-foreground">
                 {formatCurrency(totalDebtAmount - totalPaidAmount)}
               </p>
             </div>

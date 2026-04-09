@@ -31,6 +31,9 @@ export const useFinancialData = () => {
   );
   const [loading, setLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState(
+    () => format(new Date(), "yyyy-MM"),
+  );
   const saveTimeoutRef = useRef(null);
   const isSyncingRef = useRef(false);
 
@@ -163,13 +166,59 @@ export const useFinancialData = () => {
     setShowPet(visible);
   };
 
+  const filteredData = useMemo(() => {
+    const [year, month] = selectedMonth.split("-");
+    const targetMonth = parseInt(month, 10);
+    const targetYear = parseInt(year, 10);
+
+    const filterByMonth = (items, dateKey) =>
+      items.filter((item) => {
+        try {
+          const dateStr = item[dateKey];
+          if (!dateStr) return false;
+
+          let parsedDate = null;
+          // Format list commonly used in Google Sheets/JSON
+          const formats = ["dd/MM/yyyy", "yyyy-MM-dd", "MM/dd/yyyy", "dd-MM-yyyy"];
+
+          for (const fmt of formats) {
+            const date = parse(dateStr, fmt, new Date());
+            if (isValid(date)) {
+              parsedDate = date;
+              break;
+            }
+          }
+
+          // Fallback to native Date for ISO strings
+          if (!parsedDate) {
+            const native = new Date(dateStr);
+            if (isValid(native)) parsedDate = native;
+          }
+
+          if (!parsedDate) return false;
+
+          return (
+            parsedDate.getMonth() + 1 === targetMonth &&
+            parsedDate.getFullYear() === targetYear
+          );
+        } catch (e) {
+          return false;
+        }
+      });
+
+    return {
+      expenses: filterByMonth(expenses, "due_date"),
+      incomes: filterByMonth(incomes, "date"),
+    };
+  }, [expenses, incomes, selectedMonth]);
+
   // Summary Calculation
   const summary = useMemo(() => {
-    const total_income = incomes.reduce(
+    const total_income = filteredData.incomes.reduce(
       (sum, inc) => sum + (Number(inc.value) || 0),
       0,
     );
-    const total_expenses = expenses.reduce(
+    const total_expenses = filteredData.expenses.reduce(
       (sum, exp) => sum + (Number(exp.value) || 0),
       0,
     );
@@ -192,7 +241,7 @@ export const useFinancialData = () => {
       total_committed,
       available_salary,
     };
-  }, [expenses, debts, incomes]);
+  }, [filteredData, debts]);
 
   // Generators
   const generateId = () => crypto.randomUUID();
@@ -296,41 +345,41 @@ export const useFinancialData = () => {
   }, []);
 
   const rollMonth = useCallback(() => {
-    if (!window.confirm("Deseja iniciar o próximo mês?")) return;
+    if (!window.confirm("Deseja projetar os lançamentos fixos para o próximo mês?")) return;
+
+    const incrementMonth = (dateStr) => {
+      try {
+        const formats = ["dd/MM/yyyy", "yyyy-MM-dd", "MM/dd/yyyy", "dd-MM-yyyy"];
+        let parsed = null;
+        for (const f of formats) {
+          const d = parse(dateStr, f, new Date());
+          if (isValid(d)) { parsed = d; break; }
+        }
+        if (!parsed) return dateStr;
+        return format(addMonths(parsed, 1), "dd/MM/yyyy");
+      } catch { return dateStr; }
+    };
 
     setData((prev) => {
-      const newExpenses = [];
-      const newIncomes = [];
-      const updatedDebts = prev.debts.map((debt) => ({
-        ...debt,
-        paid_amount: Math.min(
-          (Number(debt.paid_amount) || 0) +
-            (Number(debt.installment_value) || 0),
-          Number(debt.total_amount) || 0,
-        ),
-      }));
-
-      const incrementMonth = (dateStr) => {
-        try {
-          // Parse string "DD/MM/YYYY" to Date object
-          const date = parse(dateStr, "dd/MM/yyyy", new Date());
-
-          if (!isValid(date)) return dateStr;
-
-          // Add 1 month safely (handles leap years and different month lengths)
-          const newDate = addMonths(date, 1);
-
-          // Format back to "DD/MM/YYYY"
-          return format(newDate, "dd/MM/yyyy");
-        } catch (e) {
-          console.error("Date error:", e);
-          return dateStr;
-        }
-      };
-
+      const [year, month] = selectedMonth.split("-");
+      const currentViewDate = new Date(parseInt(year, 10), parseInt(month, 10) - 1, 1);
+      
+      const nextMonthExpenses = [];
       prev.expenses.forEach((exp) => {
-        if (exp.is_fixed) {
-          newExpenses.push({
+        // Filter: Only copy fixed expenses that belong to the current month in view
+        let expDate = null;
+        const formats = ["dd/MM/yyyy", "yyyy-MM-dd"];
+        for (const f of formats) {
+          const d = parse(exp.due_date, f, new Date());
+          if (isValid(d)) { expDate = d; break; }
+        }
+
+        const isCurrentMonth = expDate && 
+          expDate.getMonth() === currentViewDate.getMonth() && 
+          expDate.getFullYear() === currentViewDate.getFullYear();
+
+        if (exp.is_fixed && isCurrentMonth) {
+          nextMonthExpenses.push({
             ...exp,
             id: generateId(),
             due_date: incrementMonth(exp.due_date),
@@ -340,23 +389,29 @@ export const useFinancialData = () => {
         }
       });
 
-      prev.incomes.forEach((inc) => {
-        newIncomes.push({
-          ...inc,
-          id: generateId(),
-          date: incrementMonth(inc.date),
-          created_at: getNowISO(),
-        });
-      });
+      // Update debt payments if any
+      const updatedDebts = prev.debts.map((debt) => ({
+        ...debt,
+        paid_amount: Math.min(
+          (Number(debt.paid_amount) || 0) + (Number(debt.installment_value) || 0),
+          Number(debt.total_amount) || 0
+        ),
+      }));
 
       return {
-        expenses: [...prev.expenses, ...newExpenses],
-        incomes: [...prev.incomes, ...newIncomes],
-        debts: updatedDebts,
+        ...prev,
+        expenses: [...prev.expenses, ...nextMonthExpenses],
+        debts: updatedDebts
       };
     });
-    toast.success("Próximo mês iniciado!");
-  }, []);
+
+    // Auto-navigate to next month
+    const [y, m] = selectedMonth.split("-");
+    const nextDate = addMonths(new Date(parseInt(y, 10), parseInt(m, 10) - 1, 1), 1);
+    setSelectedMonth(format(nextDate, "yyyy-MM"));
+    
+    toast.success("Lançamentos projetados e visão alterada para o próximo mês!");
+  }, [selectedMonth, generateId, getNowISO]);
 
   const exportData = useCallback(() => {
     const dataStr = JSON.stringify(data, null, 2);
@@ -387,7 +442,18 @@ export const useFinancialData = () => {
   }, []);
 
   return {
-    data: { expenses, debts, incomes, summary, cloudUrl, isSyncing, showPet },
+    data: {
+      expenses,
+      debts,
+      incomes,
+      filteredExpenses: filteredData.expenses,
+      filteredIncomes: filteredData.incomes,
+      summary,
+      cloudUrl,
+      isSyncing,
+      showPet,
+      selectedMonth,
+    },
     loading,
     actions: {
       fetchData: loadFromCloud,
@@ -405,6 +471,7 @@ export const useFinancialData = () => {
       importData,
       updateCloudUrl,
       updatePetVisibility,
+      setSelectedMonth,
       forceSync: syncToCloud,
     },
   };
