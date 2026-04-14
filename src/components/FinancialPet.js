@@ -267,24 +267,28 @@ const DogVisual = ({ mood, colors }) => (
     className="w-full h-full drop-shadow-2xl transition-all duration-500"
   >
     <PetDefs />
-    <ellipse
+    <motion.ellipse
       cx="15"
-      cy="50"
-      rx="12"
-      ry="25"
-      fill="#d97706"
+      cy="45"
+      rx="14"
+      ry="35"
+      fill="#b45309"
       filter="url(#softShadow)"
+      animate={{ rotate: [-2, 2, -2] }}
+      transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
     />
-    <ellipse
+    <motion.ellipse
       cx="85"
-      cy="50"
-      rx="12"
-      ry="25"
-      fill="#d97706"
+      cy="45"
+      rx="14"
+      ry="35"
+      fill="#b45309"
       filter="url(#softShadow)"
+      animate={{ rotate: [2, -2, 2] }}
+      transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
     />
-    <ellipse cx="15" cy="50" rx="8" ry="20" fill="#f59e0b" />
-    <ellipse cx="85" cy="50" rx="8" ry="20" fill="#f59e0b" />
+    <ellipse cx="15" cy="45" rx="9" ry="28" fill="#d97706" />
+    <ellipse cx="85" cy="45" rx="9" ry="28" fill="#d97706" />
     <circle
       cx="50"
       cy="55"

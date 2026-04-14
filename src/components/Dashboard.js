@@ -6,6 +6,7 @@ import {
   CreditCard,
   LayoutGrid,
   CalendarRange,
+  Zap,
 } from "lucide-react";
 import { useFinancialData } from "../hooks/useFinancialData";
 
@@ -89,6 +90,14 @@ const Dashboard = () => {
           "btn-base bg-purple-500/10 text-purple-500 border border-purple-500/20 hover:bg-purple-500 hover:text-white",
         title: "Gera automaticamente entradas do próximo mês",
         hideOnMobile: true,
+      },
+      {
+        label: "Atualizar Mês",
+        icon: Zap,
+        onClick: actions.forceProjectCurrentMonth,
+        className:
+          "btn-base bg-amber-500/10 text-amber-500 border border-amber-500/20 hover:bg-amber-500 hover:text-white",
+        title: "Puxa despesas fixas e atualiza parcelas do mês atual agora",
       },
       {
         label: "Receita",
@@ -271,6 +280,7 @@ const Dashboard = () => {
                   expenses={filteredExpenses}
                   onUpdateExpense={actions.updateExpense}
                   onDeleteExpense={actions.deleteExpense}
+                  onCloneExpense={(id) => actions.cloneExpense(id, format(new Date(), "yyyy-MM"))}
                 />
               </motion.div>
 

@@ -12,12 +12,13 @@ import {
   Square,
   Calculator,
   RotateCcw,
+  Copy,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatCurrency } from "../utils";
 
 const FinancialGrid = React.memo(
-  ({ expenses, onUpdateExpense, onDeleteExpense }) => {
+  ({ expenses, onUpdateExpense, onDeleteExpense, onCloneExpense }) => {
     const [editingId, setEditingId] = useState(null);
     const [editForm, setEditForm] = useState({});
     const [searchTerm, setSearchTerm] = useState("");
@@ -27,11 +28,13 @@ const FinancialGrid = React.memo(
     // Filtered data based on search and status
     const filteredExpenses = useMemo(() => {
       return expenses.filter((exp) => {
-        const matchesSearch = exp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        const matchesSearch =
+          exp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           exp.category.toLowerCase().includes(searchTerm.toLowerCase());
-        
-        const matchesStatus = statusFilter === "all" || exp.status === statusFilter;
-        
+
+        const matchesStatus =
+          statusFilter === "all" || exp.status === statusFilter;
+
         return matchesSearch && matchesStatus;
       });
     }, [expenses, searchTerm, statusFilter]);
@@ -74,14 +77,17 @@ const FinancialGrid = React.memo(
     };
 
     const handleBulkStatusUpdate = (newStatus) => {
-      selectedIds.forEach(id => {
+      selectedIds.forEach((id) => {
         onUpdateExpense(id, { status: newStatus });
       });
       setSelectedIds(new Set());
     };
 
     return (
-      <div className="glass-card rounded-3xl p-6 sm:p-8" data-testid="financial-grid">
+      <div
+        className="glass-card rounded-3xl p-6 sm:p-8"
+        data-testid="financial-grid"
+      >
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
           <div>
             <h2 className="text-2xl font-extrabold tracking-tight font-heading text-white">
@@ -95,7 +101,10 @@ const FinancialGrid = React.memo(
           <div className="flex flex-col sm:flex-row items-center gap-3">
             {/* Search Input inline */}
             <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                size={16}
+              />
               <input
                 type="text"
                 placeholder="Procurar despesa..."
@@ -105,28 +114,40 @@ const FinancialGrid = React.memo(
               />
             </div>
 
-          <div className="flex gap-2">
-            <button
-              onClick={() => setStatusFilter(statusFilter === "paid" ? "all" : "paid")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all ${
-                statusFilter === "paid" ? "bg-primary/20 border-primary" : "bg-white/5 border-white/5 opacity-50 hover:opacity-100"
-              }`}
-            >
-              <div className="w-2 h-2 rounded-full bg-primary" />
-              <span className="text-[10px] font-bold uppercase text-white tracking-wider">Pagos</span>
-            </button>
-            <button
-              onClick={() => setStatusFilter(statusFilter === "pending" ? "all" : "pending")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all ${
-                statusFilter === "pending" ? "bg-destructive/20 border-destructive" : "bg-white/5 border-white/5 opacity-50 hover:opacity-100"
-              }`}
-            >
-              <div className="w-2 h-2 rounded-full bg-destructive" />
-              <span className="text-[10px] font-bold uppercase text-white tracking-wider">Pendentes</span>
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() =>
+                  setStatusFilter(statusFilter === "paid" ? "all" : "paid")
+                }
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all ${
+                  statusFilter === "paid"
+                    ? "bg-primary/20 border-primary"
+                    : "bg-white/5 border-white/5 opacity-50 hover:opacity-100"
+                }`}
+              >
+                <div className="w-2 h-2 rounded-full bg-primary" />
+                <span className="text-[10px] font-bold uppercase text-white tracking-wider">
+                  Pagos
+                </span>
+              </button>
+              <button
+                onClick={() =>
+                  setStatusFilter(statusFilter === "pending" ? "all" : "pending")
+                }
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all ${
+                  statusFilter === "pending"
+                    ? "bg-destructive/20 border-destructive"
+                    : "bg-white/5 border-white/5 opacity-50 hover:opacity-100"
+                }`}
+              >
+                <div className="w-2 h-2 rounded-full bg-destructive" />
+                <span className="text-[10px] font-bold uppercase text-white tracking-wider">
+                  Pendentes
+                </span>
+              </button>
+            </div>
           </div>
         </div>
-      </div>
 
         {/* Calculator Sum Bar */}
         <AnimatePresence>
@@ -142,19 +163,23 @@ const FinancialGrid = React.memo(
                   <Calculator size={18} strokeWidth={3} />
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase font-black tracking-widest text-primary/70 mb-0.5">Soma Selecionada</p>
-                  <p className="text-xl font-black font-heading text-white">{formatCurrency(totalSelected)}</p>
+                  <p className="text-[10px] uppercase font-black tracking-widest text-primary/70 mb-0.5">
+                    Soma Selecionada
+                  </p>
+                  <p className="text-xl font-black font-heading text-white">
+                    {formatCurrency(totalSelected)}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-2 w-full sm:w-auto">
-                <button 
+                <button
                   onClick={() => handleBulkStatusUpdate("paid")}
                   className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-xs font-black uppercase tracking-tight transition-all hover:scale-105 active:scale-95"
                 >
                   <Check size={14} strokeWidth={3} />
                   Marcar como Pago
                 </button>
-                <button 
+                <button
                   onClick={() => setSelectedIds(new Set())}
                   className="p-2 bg-white/5 hover:bg-white/10 text-white/50 rounded-xl transition-all"
                   title="Limpar seleção"
@@ -171,7 +196,9 @@ const FinancialGrid = React.memo(
           {filteredExpenses.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-10 bg-white/5 rounded-2xl border border-dashed border-white/10 opacity-50">
               <Search size={24} className="text-muted-foreground mb-2" />
-              <p className="text-muted-foreground text-xs font-bold uppercase">Nenhum resultado</p>
+              <p className="text-muted-foreground text-xs font-bold uppercase">
+                Nenhum resultado
+              </p>
             </div>
           ) : (
             <AnimatePresence mode="popLayout">
@@ -181,29 +208,55 @@ const FinancialGrid = React.memo(
                   key={expense.id}
                   onClick={() => toggleSelect(expense.id)}
                   className={`rounded-2xl p-4 border transition-all cursor-pointer ${
-                    selectedIds.has(expense.id) 
-                      ? "bg-primary/10 border-primary/30" 
+                    selectedIds.has(expense.id)
+                      ? "bg-primary/10 border-primary/30"
                       : "bg-white/5 border-white/5"
                   }`}
                 >
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex items-center gap-3">
-                      <div className={`transition-colors ${selectedIds.has(expense.id) ? "text-primary" : "text-white/20"}`}>
-                        {selectedIds.has(expense.id) ? <CheckSquare size={18} /> : <Square size={18} />}
+                      <div
+                        className={`transition-colors ${selectedIds.has(expense.id) ? "text-primary" : "text-white/20"}`}
+                      >
+                        {selectedIds.has(expense.id) ? (
+                          <CheckSquare size={18} />
+                        ) : (
+                          <Square size={18} />
+                        )}
                       </div>
-                      <p className="text-sm font-bold text-white">{expense.name}</p>
+                      <p className="text-sm font-bold text-white">
+                        {expense.name}
+                      </p>
                     </div>
-                    <span 
-                      onClick={(e) => { e.stopPropagation(); handleToggleStatus(expense); }}
-                      className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${
-                        expense.status === "paid" ? "bg-primary/20 text-primary" : "bg-destructive/20 text-destructive"
-                      }`}
-                    >
-                      {expense.status === "paid" ? "Pago" : "Pendente"}
-                    </span>
+                    <div className="flex items-center gap-2">
+                       {onCloneExpense && (
+                         <button 
+                            onClick={(e) => { e.stopPropagation(); onCloneExpense(expense.id); }}
+                            className="p-1.5 bg-white/5 text-white/60 rounded-lg"
+                            title="Replicar para mês atual"
+                         >
+                           <Copy size={12} />
+                         </button>
+                       )}
+                      <span
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleStatus(expense);
+                        }}
+                        className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${
+                          expense.status === "paid"
+                            ? "bg-primary/20 text-primary"
+                            : "bg-destructive/20 text-destructive"
+                        }`}
+                      >
+                        {expense.status === "paid" ? "Pago" : "Pendente"}
+                      </span>
+                    </div>
                   </div>
                   <div className="flex justify-between items-end border-t border-white/5 pt-3">
-                    <p className="text-base font-black font-mono text-white">{formatCurrency(expense.value)}</p>
+                    <p className="text-base font-black font-mono text-white">
+                      {formatCurrency(expense.value)}
+                    </p>
                     <div className="flex items-center gap-1 text-[10px] text-white/40">
                       <Calendar size={10} />
                       <span>{expense.due_date}</span>
@@ -232,7 +285,9 @@ const FinancialGrid = React.memo(
               {filteredExpenses.length === 0 ? (
                 <tr>
                   <td colSpan="6" className="p-8 text-center opacity-40">
-                    <p className="text-sm font-bold uppercase tracking-widest">Nada encontrado para "{searchTerm}"</p>
+                    <p className="text-sm font-bold uppercase tracking-widest">
+                      Nada encontrado para "{searchTerm}"
+                    </p>
                   </td>
                 </tr>
               ) : (
@@ -242,31 +297,45 @@ const FinancialGrid = React.memo(
                       layout
                       key={expense.id}
                       className={`group hover:bg-white/[0.04] transition-all cursor-pointer ${
-                        selectedIds.has(expense.id) ? "bg-primary/5" : "bg-white/[0.02]"
+                        selectedIds.has(expense.id)
+                          ? "bg-primary/5"
+                          : "bg-white/[0.02]"
                       }`}
                       onClick={() => toggleSelect(expense.id)}
                     >
                       <td className="py-3 px-4 first:rounded-l-2xl border-l border-y border-transparent">
-                        <div className={`transition-colors ${selectedIds.has(expense.id) ? "text-primary" : "text-white/20"}`}>
-                           {selectedIds.has(expense.id) ? <CheckSquare size={18} /> : <Square size={18} />}
+                        <div
+                          className={`transition-colors ${selectedIds.has(expense.id) ? "text-primary" : "text-white/20"}`}
+                        >
+                          {selectedIds.has(expense.id) ? (
+                            <CheckSquare size={18} />
+                          ) : (
+                            <Square size={18} />
+                          )}
                         </div>
                       </td>
                       <td className="py-3 px-4 border-y border-transparent">
-                          {editingId === expense.id ? (
-                            <input
-                              type="text"
-                              onClick={(e) => e.stopPropagation()}
-                              value={editForm.name}
-                              onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                              className="bg-slate-900 border border-white/20 text-white text-xs rounded-lg h-8 px-2 w-full"
-                              autoFocus
-                            />
-                          ) : (
-                            <div>
-                                <p className="text-sm font-bold text-white leading-none mb-1">{expense.name}</p>
-                                <p className="text-[9px] uppercase font-black text-white/30 tracking-tight">{expense.category}</p>
-                            </div>
-                          )}
+                        {editingId === expense.id ? (
+                          <input
+                            type="text"
+                            onClick={(e) => e.stopPropagation()}
+                            value={editForm.name}
+                            onChange={(e) =>
+                              setEditForm({ ...editForm, name: e.target.value })
+                            }
+                            className="bg-slate-900 border border-white/20 text-white text-xs rounded-lg h-8 px-2 w-full"
+                            autoFocus
+                          />
+                        ) : (
+                          <div>
+                            <p className="text-sm font-bold text-white leading-none mb-1">
+                              {expense.name}
+                            </p>
+                            <p className="text-[9px] uppercase font-black text-white/30 tracking-tight">
+                              {expense.category}
+                            </p>
+                          </div>
+                        )}
                       </td>
                       <td className="py-3 px-4 border-y border-transparent">
                         <span className="text-sm font-black font-mono text-white">
@@ -274,13 +343,20 @@ const FinancialGrid = React.memo(
                         </span>
                       </td>
                       <td className="py-3 px-4 border-y border-transparent text-center">
-                        <span className="text-[10px] font-bold text-white/40">{expense.due_date}</span>
+                        <span className="text-[10px] font-bold text-white/40">
+                          {expense.due_date}
+                        </span>
                       </td>
                       <td className="py-3 px-4 border-y border-transparent text-center">
                         <button
-                          onClick={(e) => { e.stopPropagation(); handleToggleStatus(expense); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleStatus(expense);
+                          }}
                           className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                            expense.status === "paid" ? "bg-primary/20 text-primary" : "bg-destructive/20 text-destructive"
+                            expense.status === "paid"
+                              ? "bg-primary/20 text-primary"
+                              : "bg-destructive/20 text-destructive"
                           }`}
                         >
                           {expense.status === "paid" ? "Pago" : "Pendente"}
@@ -290,13 +366,54 @@ const FinancialGrid = React.memo(
                         <div className="flex gap-2 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
                           {editingId === expense.id ? (
                             <>
-                              <button onClick={(e) => { e.stopPropagation(); handleSave(); }} className="p-2 bg-primary/20 text-primary rounded-lg"><Check size={14} /></button>
-                              <button onClick={(e) => { e.stopPropagation(); handleCancel(); }} className="p-2 bg-destructive/20 text-destructive rounded-lg"><X size={14} /></button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSave();
+                                }}
+                                className="p-2 bg-primary/20 text-primary rounded-lg"
+                              >
+                                <Check size={14} />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleCancel();
+                                }}
+                                className="p-2 bg-destructive/20 text-destructive rounded-lg"
+                              >
+                                <X size={14} />
+                              </button>
                             </>
                           ) : (
                             <>
-                              <button onClick={(e) => { e.stopPropagation(); handleEdit(expense); }} className="p-2 bg-white/5 text-slate-400 rounded-lg hover:bg-white/10"><Edit2 size={14} /></button>
-                              <button onClick={(e) => { e.stopPropagation(); onDeleteExpense(expense.id); }} className="p-2 bg-destructive/10 text-destructive/60 rounded-lg hover:bg-destructive/20"><Trash2 size={14} /></button>
+                              {onCloneExpense && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); onCloneExpense(expense.id); }}
+                                  className="p-2 bg-white/5 text-slate-400 rounded-lg hover:bg-white/10"
+                                  title="Replicar para mês atual"
+                                >
+                                  <Copy size={14} />
+                                </button>
+                              )}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEdit(expense);
+                                }}
+                                className="p-2 bg-white/5 text-slate-400 rounded-lg hover:bg-white/10"
+                              >
+                                <Edit2 size={14} />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onDeleteExpense(expense.id);
+                                }}
+                                className="p-2 bg-destructive/10 text-destructive/60 rounded-lg hover:bg-destructive/20"
+                              >
+                                <Trash2 size={14} />
+                              </button>
                             </>
                           )}
                         </div>

@@ -32,9 +32,10 @@ const HistoricalChart = React.memo(({ expenses, incomes }) => {
 
   const [showMonthSelector, setShowMonthSelector] = useState(false);
   const [selectedMonths, setSelectedMonths] = useState(() => {
-    // Inicializa com o mês atual + 5 meses seguintes
+    // Inicializa com 3 meses anteriores, o atual e 2 meses seguintes
+    // Posições: [M-3, M-2, M-1, Atual, M+1, M+2]
     const initial = [];
-    for (let i = 0; i <= 5; i++) {
+    for (let i = -3; i <= 2; i++) {
       initial.push(format(addMonths(currentMonth, i), "yyyy-MM"));
     }
     return initial;
@@ -114,8 +115,10 @@ const HistoricalChart = React.memo(({ expenses, incomes }) => {
 
     const data = [];
 
-    // Filtra apenas os meses selecionados
-    selectedMonths.sort().forEach((monthKey) => {
+    // Cria uma cópia para evitar mutação in-place e ordena
+    const sortedSelected = [...selectedMonths].sort();
+    
+    sortedSelected.forEach((monthKey) => {
       const [year, month] = monthKey.split("-");
       const monthDate = new Date(parseInt(year), parseInt(month) - 1, 1);
       const monthStart = startOfMonth(monthDate);
@@ -166,7 +169,7 @@ const HistoricalChart = React.memo(({ expenses, incomes }) => {
   }, [expenses, incomes, selectedMonths]);
 
   const CustomTooltip = ({ active, payload, label }) => {
-    if (active && payload && payload.length) {
+    if (active && payload && payload.length > 0) {
       const isFuture = payload[0]?.payload?.isFuture;
 
       return (

@@ -14,14 +14,24 @@ const initialData = {
   expenses: [],
   debts: [],
   incomes: [],
+  automation_meta: {
+    last_processed_month: format(new Date(), "yyyy-MM"), // Inicia no mês atual para evitar duplicar atualizações já feitas manualmente
+  }
 };
 
 export const useFinancialData = () => {
   const [data, setData] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
-    // Tenta decifrar. Se falhar ou for nulo, usa dados iniciais.
     const decrypted = saved ? decryptData(saved) : null;
-    return decrypted || initialData;
+    const baseData = decrypted || initialData;
+    // Se não tiver automation_meta (usuário antigo), define como o mês atual
+    // Isso evita que o sistema tente "corrigir" o mês atual que o usuário já mexeu
+    if (!baseData.automation_meta) {
+      baseData.automation_meta = {
+        last_processed_month: format(new Date(), "yyyy-MM")
+      };
+    }
+    return baseData;
   });
 
   const [cloudUrl, setCloudUrl] = useState(
@@ -86,11 +96,16 @@ export const useFinancialData = () => {
             response.data.debts ||
             response.data.incomes)
         ) {
-          const newDataString = JSON.stringify(response.data);
+          const newData = response.data;
+          // Garantir metadados no item vindo da nuvem
+          if (!newData.automation_meta) {
+            newData.automation_meta = initialData.automation_meta;
+          }
+          const newDataString = JSON.stringify(newData);
 
           if (newDataString !== previousDataHashRef.current) {
             previousDataHashRef.current = newDataString;
-            setData(response.data);
+            setData(newData);
             if (!silent) toast.success("Dados sincronizados com a nuvem!");
           }
           initialLoadDoneRef.current = true;
@@ -220,8 +235,17 @@ export const useFinancialData = () => {
   }, [filteredData, debts]);
 
   // Generators
-  const generateId = () => crypto.randomUUID();
-  const getNowISO = () => new Date().toISOString();
+  const generateId = useCallback(() => {
+    if (typeof crypto !== "undefined" && crypto.randomUUID) {
+      return crypto.randomUUID();
+    }
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0;
+      const v = c === "x" ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
+  }, []);
+  const getNowISO = useCallback(() => new Date().toISOString(), []);
 
   // Actions
   const addExpense = useCallback((expenseData) => {
@@ -237,7 +261,7 @@ export const useFinancialData = () => {
     }));
     toast.success("Despesa adicionada!");
     return true;
-  }, []);
+  }, [generateId, getNowISO]);
 
   const updateExpense = useCallback((id, updates) => {
     setData((prev) => ({
@@ -270,7 +294,7 @@ export const useFinancialData = () => {
     }));
     toast.success("Dívida adicionada!");
     return true;
-  }, []);
+  }, [generateId, getNowISO]);
 
   const updateDebt = useCallback((id, updates) => {
     setData((prev) => ({
@@ -300,7 +324,7 @@ export const useFinancialData = () => {
     }));
     toast.success("Receita adicionada!");
     return true;
-  }, []);
+  }, [generateId, getNowISO]);
 
   const updateIncome = useCallback((id, updates) => {
     setData((prev) => ({
@@ -320,10 +344,9 @@ export const useFinancialData = () => {
     toast.success("Receita excluída!");
   }, []);
 
-  const rollMonth = useCallback(() => {
-    if (!window.confirm("Deseja projetar os lançamentos fixos para o próximo mês?")) return;
-
-    const incrementMonth = (dateStr) => {
+  // Core Projection Logic (reusable for manual and auto)
+  const projectItems = useCallback((sourceMonthDate, targetMonthDate) => {
+    const incrementDateMonth = (dateStr) => {
       try {
         const formats = ["dd/MM/yyyy", "yyyy-MM-dd", "MM/dd/yyyy", "dd-MM-yyyy"];
         let parsed = null;
@@ -337,12 +360,8 @@ export const useFinancialData = () => {
     };
 
     setData((prev) => {
-      const [year, month] = selectedMonth.split("-");
-      const currentViewDate = new Date(parseInt(year, 10), parseInt(month, 10) - 1, 1);
-      
       const nextMonthExpenses = [];
       prev.expenses.forEach((exp) => {
-        // Filter: Only copy fixed expenses that belong to the current month in view
         let expDate = null;
         const formats = ["dd/MM/yyyy", "yyyy-MM-dd"];
         for (const f of formats) {
@@ -350,22 +369,30 @@ export const useFinancialData = () => {
           if (isValid(d)) { expDate = d; break; }
         }
 
-        const isCurrentMonth = expDate && 
-          expDate.getMonth() === currentViewDate.getMonth() && 
-          expDate.getFullYear() === currentViewDate.getFullYear();
+        const isSourceMonth = expDate && 
+          expDate.getMonth() === sourceMonthDate.getMonth() && 
+          expDate.getFullYear() === sourceMonthDate.getFullYear();
 
-        if (exp.is_fixed && isCurrentMonth) {
-          nextMonthExpenses.push({
-            ...exp,
-            id: generateId(),
-            due_date: incrementMonth(exp.due_date),
-            status: "pending",
-            created_at: getNowISO(),
-          });
+        if (exp.is_fixed && isSourceMonth) {
+          // Check if it already exists in target month to avoid duplicates
+          const exists = prev.expenses.some(e => 
+            e.name === exp.name && 
+            parseDate(e.due_date)?.getMonth() === targetMonthDate.getMonth() &&
+            parseDate(e.due_date)?.getFullYear() === targetMonthDate.getFullYear()
+          );
+
+          if (!exists) {
+            nextMonthExpenses.push({
+              ...exp,
+              id: generateId(),
+              due_date: incrementDateMonth(exp.due_date),
+              status: "pending",
+              created_at: getNowISO(),
+            });
+          }
         }
       });
 
-      // Update debt payments if any
       const updatedDebts = prev.debts.map((debt) => ({
         ...debt,
         paid_amount: Math.min(
@@ -377,17 +404,50 @@ export const useFinancialData = () => {
       return {
         ...prev,
         expenses: [...prev.expenses, ...nextMonthExpenses],
-        debts: updatedDebts
+        debts: updatedDebts,
+        automation_meta: {
+           ...prev.automation_meta,
+           last_processed_month: format(targetMonthDate, "yyyy-MM")
+        }
       };
     });
+  }, [generateId, getNowISO]);
 
-    // Auto-navigate to next month
-    const [y, m] = selectedMonth.split("-");
-    const nextDate = addMonths(new Date(parseInt(y, 10), parseInt(m, 10) - 1, 1), 1);
-    setSelectedMonth(format(nextDate, "yyyy-MM"));
+  const rollMonth = useCallback(() => {
+    if (!window.confirm("Deseja projetar os lançamentos fixos para o próximo mês?")) return;
     
+    const [year, month] = selectedMonth.split("-");
+    const currentViewDate = new Date(parseInt(year, 10), parseInt(month, 10) - 1, 1);
+    const nextDate = addMonths(currentViewDate, 1);
+
+    projectItems(currentViewDate, nextDate);
+    setSelectedMonth(format(nextDate, "yyyy-MM"));
     toast.success("Lançamentos projetados e visão alterada para o próximo mês!");
-  }, [selectedMonth, generateId, getNowISO]);
+  }, [selectedMonth, projectItems]);
+
+  // Automation Effect: Triggered every 5th of the month
+  useEffect(() => {
+    const automator = () => {
+      const now = new Date();
+      const currentDay = now.getDate();
+      const currentMonthKey = format(now, "yyyy-MM");
+      
+      const lastUpdate = data.automation_meta?.last_processed_month;
+      
+      // Se for dia 5 ou mais e ainda não processou o mês atual
+      if (currentDay >= 5 && lastUpdate !== currentMonthKey) {
+        const lastMonthDate = addMonths(now, -1);
+        projectItems(lastMonthDate, now);
+        toast.info("Automação mensal: Despesas fixas e parcelas atualizadas para o dia 5! 🚀", {
+          description: "Nós carregamos suas despesas do mês passado e avançamos as parcelas dos cartões automaticamente."
+        });
+      }
+    };
+
+    // Pequeno delay para garantir que os dados iniciais carregaram (especialmente da nuvem)
+    const timer = setTimeout(automator, 3000);
+    return () => clearTimeout(timer);
+  }, [data.automation_meta, projectItems]);
 
   const exportData = useCallback(() => {
     const dataStr = JSON.stringify(data, null, 2);
@@ -407,6 +467,9 @@ export const useFinancialData = () => {
       const parsed =
         typeof jsonData === "string" ? JSON.parse(jsonData) : jsonData;
       if (parsed.expenses) {
+        if (!parsed.automation_meta) {
+          parsed.automation_meta = initialData.automation_meta;
+        }
         setData(parsed);
         toast.success("Dados importados!");
         return true;
@@ -429,9 +492,10 @@ export const useFinancialData = () => {
       isSyncing,
       showPet,
       selectedMonth,
+      automationMeta: data.automation_meta,
     },
     loading,
-    actions: {
+      actions: {
       fetchData: loadFromCloud,
       addExpense,
       updateExpense,
@@ -443,6 +507,47 @@ export const useFinancialData = () => {
       updateIncome,
       deleteIncome,
       rollMonth,
+      cloneExpense: useCallback((id, targetMonthKey) => {
+        setData((prev) => {
+          const expense = prev.expenses.find(e => e.id === id);
+          if (!expense) return prev;
+
+          const [y, m] = targetMonthKey.split("-");
+          const targetDate = new Date(parseInt(y), parseInt(m) - 1, 1);
+          
+          const formats = ["dd/MM/yyyy", "yyyy-MM-dd"];
+          let newDateStr = expense.due_date;
+          for (const f of formats) {
+            const d = parse(expense.due_date, f, new Date());
+            if (isValid(d)) {
+              // Mantém o dia original, mas muda para o mês/ano de destino
+              const newD = new Date(targetDate.getFullYear(), targetDate.getMonth(), d.getDate());
+              newDateStr = format(newD, "dd/MM/yyyy");
+              break;
+            }
+          }
+
+          const newExpense = {
+            ...expense,
+            id: crypto.randomUUID(),
+            due_date: newDateStr,
+            status: "pending",
+            created_at: new Date().toISOString()
+          };
+
+          return {
+            ...prev,
+            expenses: [...prev.expenses, newExpense]
+          };
+        });
+        toast.success("Despesa replicada para o mês selecionado!");
+      }, []),
+      forceProjectCurrentMonth: () => {
+        const now = new Date();
+        const lastMonthDate = addMonths(now, -1);
+        projectItems(lastMonthDate, now);
+        toast.success("Mês atualizado manualmente com gastos fixos e parcelas!");
+      },
       exportData,
       importData,
       updateCloudUrl,
