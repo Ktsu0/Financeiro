@@ -8,6 +8,7 @@ import {
   CalendarRange,
   Zap,
 } from "lucide-react";
+import { format } from "date-fns";
 import { useFinancialData } from "../hooks/useFinancialData";
 
 import Header from "./Header";
@@ -201,8 +202,13 @@ const Dashboard = () => {
             onClick={() => toggleModal("analysis", true)}
             className="btn-primary shimmer group flex items-center gap-3 px-10"
           >
-            <LayoutGrid size={18} className="group-hover:rotate-90 transition-transform duration-500" />
-            <span className="uppercase tracking-widest font-black text-xs">Análise Completa</span>
+            <LayoutGrid
+              size={18}
+              className="group-hover:rotate-90 transition-transform duration-500"
+            />
+            <span className="uppercase tracking-widest font-black text-xs">
+              Análise Completa
+            </span>
           </button>
         </motion.div>
 
@@ -280,7 +286,9 @@ const Dashboard = () => {
                   expenses={filteredExpenses}
                   onUpdateExpense={actions.updateExpense}
                   onDeleteExpense={actions.deleteExpense}
-                  onCloneExpense={(id) => actions.cloneExpense(id, format(new Date(), "yyyy-MM"))}
+                  onCloneExpense={(id) =>
+                    actions.cloneExpense(id, format(new Date(), "yyyy-MM"))
+                  }
                 />
               </motion.div>
 
@@ -289,6 +297,7 @@ const Dashboard = () => {
                   debts={debts}
                   onUpdateDebt={actions.updateDebt}
                   onDeleteDebt={actions.deleteDebt}
+                  currentMonth={selectedMonth}
                 />
               </motion.div>
             </div>
@@ -296,7 +305,11 @@ const Dashboard = () => {
 
           {/* Sidebar - Responsive: Bottom on mobile, side on desktop */}
           <div className="xl:col-span-4 xl:sticky xl:top-8">
-            <Sidebar expenses={filteredExpenses} debts={debts} summary={summary} />
+            <Sidebar
+              expenses={filteredExpenses}
+              debts={debts}
+              summary={summary}
+            />
           </div>
         </motion.div>
       </main>
@@ -304,7 +317,7 @@ const Dashboard = () => {
       {/* Persistence/Version Footer */}
       <footer className="mt-auto py-8 flex justify-center w-full relative z-10">
         <p className="text-[10px] text-slate-600 uppercase font-black tracking-[0.2em] text-center">
-          Meu Financeiro v2.0 • 100% Local & Seguro
+          Desenvolvivo • Gabriel Wagner
         </p>
       </footer>
 

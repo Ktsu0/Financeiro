@@ -214,6 +214,12 @@ export const useFinancialData = () => {
       0,
     );
 
+    const [year, month] = selectedMonth.split("-");
+    const targetDate = new Date(parseInt(year, 10), parseInt(month, 10) - 1, 1);
+    const now = new Date();
+    const currentRealMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const diffMonths = (targetDate.getFullYear() - currentRealMonth.getFullYear()) * 12 + (targetDate.getMonth() - currentRealMonth.getMonth());
+
     const total_debt = debts.reduce((sum, d) => {
       const remaining =
         (Number(d.total_amount) || 0) - (Number(d.paid_amount) || 0);
@@ -222,7 +228,24 @@ export const useFinancialData = () => {
 
     const total_committed =
       total_expenses +
-      debts.reduce((sum, d) => sum + (Number(d.installment_value) || 0), 0);
+      debts.reduce((sum, d) => {
+        const instVal = Number(d.installment_value) || 0;
+        const tInst = d.total_installments || (instVal > 0 ? Math.ceil(d.total_amount / instVal) : 0) || 0;
+        const pInst = d.paid_installments || 0;
+        const remaining = Math.max(0, tInst - pInst);
+
+        let val = instVal;
+        // Se a dívida já foi paga integralmente, não compromete mais nada (no mês atual ou futuro)
+        if (remaining === 0 && diffMonths >= 0) {
+            val = 0;
+        } else if (diffMonths >= remaining && diffMonths > 0) {
+            // Se as parcelas acabarão antes do mês projetado, a dívida some para essa projeção futura
+            val = 0;
+        }
+
+        return sum + val;
+      }, 0);
+
     const available_salary = total_income - total_committed;
 
     return {
@@ -232,7 +255,7 @@ export const useFinancialData = () => {
       total_committed,
       available_salary,
     };
-  }, [filteredData, debts]);
+  }, [filteredData, debts, selectedMonth]);
 
   // Generators
   const generateId = useCallback(() => {
@@ -347,29 +370,19 @@ export const useFinancialData = () => {
   // Core Projection Logic (reusable for manual and auto)
   const projectItems = useCallback((sourceMonthDate, targetMonthDate) => {
     const incrementDateMonth = (dateStr) => {
-      try {
-        const formats = ["dd/MM/yyyy", "yyyy-MM-dd", "MM/dd/yyyy", "dd-MM-yyyy"];
-        let parsed = null;
-        for (const f of formats) {
-          const d = parse(dateStr, f, new Date());
-          if (isValid(d)) { parsed = d; break; }
-        }
-        if (!parsed) return dateStr;
-        return format(addMonths(parsed, 1), "dd/MM/yyyy");
-      } catch { return dateStr; }
+      const d = parseDate(dateStr);
+      if (!d) return dateStr;
+      return format(addMonths(d, 1), "dd/MM/yyyy");
     };
 
     setData((prev) => {
       const nextMonthExpenses = [];
       prev.expenses.forEach((exp) => {
-        let expDate = null;
-        const formats = ["dd/MM/yyyy", "yyyy-MM-dd"];
-        for (const f of formats) {
-          const d = parse(exp.due_date, f, new Date());
-          if (isValid(d)) { expDate = d; break; }
-        }
+        const expDate = parseDate(exp.due_date);
 
         const isSourceMonth = expDate && 
+          expDate.getMonth() === sourceMonthDate.getMonth() && 
+          expDate.getFullYear() === sourceMonthDate.getFullYear();
           expDate.getMonth() === sourceMonthDate.getMonth() && 
           expDate.getFullYear() === sourceMonthDate.getFullYear();
 
@@ -393,21 +406,55 @@ export const useFinancialData = () => {
         }
       });
 
-      const updatedDebts = prev.debts.map((debt) => ({
-        ...debt,
-        paid_amount: Math.min(
-          (Number(debt.paid_amount) || 0) + (Number(debt.installment_value) || 0),
-          Number(debt.total_amount) || 0
-        ),
-      }));
+      const nextMonthIncomes = [];
+      (prev.incomes || []).forEach((inc) => {
+        const incDate = parseDate(inc.date);
+        const isSourceMonth = incDate && 
+          incDate.getMonth() === sourceMonthDate.getMonth() && 
+          incDate.getFullYear() === sourceMonthDate.getFullYear();
+
+        if (inc.is_fixed && isSourceMonth) {
+          const exists = (prev.incomes || []).some(i => 
+            i.name === inc.name && 
+            parseDate(i.date)?.getMonth() === targetMonthDate.getMonth() &&
+            parseDate(i.date)?.getFullYear() === targetMonthDate.getFullYear()
+          );
+
+          if (!exists) {
+            nextMonthIncomes.push({
+              ...inc,
+              id: generateId(),
+              date: incrementDateMonth(inc.date),
+              created_at: getNowISO(),
+            });
+          }
+        }
+      });
+
+      const updatedDebts = prev.debts.map((debt) => {
+        const instVal = Number(debt.installment_value) || 0;
+        const currentPaid = Number(debt.paid_amount) || 0;
+        const currentInst = Number(debt.paid_installments) || 0;
+        const totalInst = debt.total_installments || (instVal > 0 ? Math.ceil(debt.total_amount / instVal) : 0) || 0;
+
+        return {
+          ...debt,
+          paid_installments: Math.min(currentInst + 1, totalInst),
+          paid_amount: Math.min(
+            currentPaid + instVal,
+            Number(debt.total_amount) || 0,
+          ),
+        };
+      });
 
       return {
         ...prev,
         expenses: [...prev.expenses, ...nextMonthExpenses],
+        incomes: [...(prev.incomes || []), ...nextMonthIncomes],
         debts: updatedDebts,
         automation_meta: {
            ...prev.automation_meta,
-           last_processed_month: format(targetMonthDate, "yyyy-MM")
+           last_processed_month: targetMonthKey
         }
       };
     });
@@ -509,41 +556,58 @@ export const useFinancialData = () => {
       rollMonth,
       cloneExpense: useCallback((id, targetMonthKey) => {
         setData((prev) => {
-          const expense = prev.expenses.find(e => e.id === id);
+          const expense = prev.expenses.find((e) => e.id === id);
           if (!expense) return prev;
 
           const [y, m] = targetMonthKey.split("-");
           const targetDate = new Date(parseInt(y), parseInt(m) - 1, 1);
           
-          const formats = ["dd/MM/yyyy", "yyyy-MM-dd"];
           let newDateStr = expense.due_date;
-          for (const f of formats) {
-            const d = parse(expense.due_date, f, new Date());
-            if (isValid(d)) {
-              // Mantém o dia original, mas muda para o mês/ano de destino
-              const newD = new Date(targetDate.getFullYear(), targetDate.getMonth(), d.getDate());
-              newDateStr = format(newD, "dd/MM/yyyy");
-              break;
-            }
+          const d = parseDate(expense.due_date);
+          if (d) {
+             const newD = new Date(targetDate.getFullYear(), targetDate.getMonth(), d.getDate());
+             newDateStr = format(newD, "dd/MM/yyyy");
+          }
+
+          // Verificação se a despesa já foi replicada no mês
+          const alreadyExists = prev.expenses.some(e => 
+             e.name === expense.name &&
+             parseDate(e.due_date)?.getMonth() === targetDate.getMonth() &&
+             parseDate(e.due_date)?.getFullYear() === targetDate.getFullYear()
+          );
+
+          if (alreadyExists) {
+             setTimeout(() => toast.error("Atenção: Esta conta já foi colocada no mês atual!"), 100);
+             return prev;
           }
 
           const newExpense = {
             ...expense,
-            id: crypto.randomUUID(),
+            id: generateId(),
             due_date: newDateStr,
             status: "pending",
-            created_at: new Date().toISOString()
+            created_at: getNowISO()
           };
 
+          setTimeout(() => toast.success("Despesa replicada para o mês selecionado!"), 100);
           return {
             ...prev,
             expenses: [...prev.expenses, newExpense]
           };
         });
-        toast.success("Despesa replicada para o mês selecionado!");
-      }, []),
+      }, [generateId, getNowISO]),
       forceProjectCurrentMonth: () => {
         const now = new Date();
+        const currentMonthKey = format(now, "yyyy-MM");
+        
+        // Prevent doubling up if already processed this month via manual or auto
+        if (data.automation_meta?.last_processed_month === currentMonthKey) {
+          toast.info("Atenção: O mês atual já foi processado. As despesas já foram projetadas.", {
+             description: "Isso previne que suas despesas e parcelas dupliquem!"
+          });
+          return;
+        }
+
         const lastMonthDate = addMonths(now, -1);
         projectItems(lastMonthDate, now);
         toast.success("Mês atualizado manualmente com gastos fixos e parcelas!");

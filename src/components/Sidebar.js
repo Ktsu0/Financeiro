@@ -13,21 +13,6 @@ import { PieChart as PieIcon, Activity, Target } from "lucide-react";
 import { formatCurrency } from "../utils";
 
 const Sidebar = React.memo(({ expenses, debts, summary }) => {
-  // Calculate spending by category
-  const categoryData = useMemo(
-    () =>
-      expenses.reduce((acc, expense) => {
-        const existing = acc.find((item) => item.name === expense.category);
-        if (existing) {
-          existing.value += expense.value;
-        } else {
-          acc.push({ name: expense.category, value: expense.value });
-        }
-        return acc;
-      }, []),
-    [expenses],
-  );
-
   const COLORS = ["#22c55e", "#f43f5e", "#3b82f6", "#eab308", "#a855f7"];
 
   // Calculate debt progress
@@ -42,21 +27,6 @@ const Sidebar = React.memo(({ expenses, debts, summary }) => {
     };
   }, [debts]);
 
-  const CustomTooltip = ({ active, payload }) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-card/90 backdrop-blur-md border border-white/10 rounded-xl p-3 shadow-2xl">
-          <p className="text-white font-body font-bold text-sm mb-1">
-            {payload[0].name}
-          </p>
-          <p className="text-primary font-mono font-bold">
-            {formatCurrency(payload[0].value)}
-          </p>
-        </div>
-      );
-    }
-    return null;
-  };
 
   const itemVariants = {
     hidden: { opacity: 0, x: 20 },
@@ -65,75 +35,6 @@ const Sidebar = React.memo(({ expenses, debts, summary }) => {
 
   return (
     <aside className="w-full lg:w-96 space-y-8" data-testid="sidebar">
-      {/* Spending Distribution */}
-      <motion.div
-        initial="hidden"
-        animate="visible"
-        variants={itemVariants}
-        className="glass-card rounded-3xl p-8"
-        data-testid="spending-distribution-card"
-      >
-        <div className="flex items-center gap-3 mb-8">
-          <div className="p-2 bg-primary/10 rounded-lg">
-            <PieIcon size={20} className="text-primary" />
-          </div>
-          <h3 className="text-xl font-bold font-heading text-white">
-            Distribuição
-          </h3>
-        </div>
-
-        {categoryData.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-10 text-center">
-            <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4">
-              <PieIcon size={32} className="text-muted-foreground opacity-20" />
-            </div>
-            <p className="text-muted-foreground text-sm font-medium">
-              Ainda não há dados <br /> de gastos registrados.
-            </p>
-          </div>
-        ) : (
-          <div className="h-[280px] w-full relative overflow-hidden">
-            <ResponsiveContainer
-              width="99%"
-              height="100%"
-              minWidth={0}
-              minHeight={0}
-            >
-              <PieChart>
-                <Pie
-                  data={categoryData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={85}
-                  paddingAngle={5}
-                  dataKey="value"
-                  stroke="none"
-                >
-                  {categoryData.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={COLORS[index % COLORS.length]}
-                    />
-                  ))}
-                </Pie>
-                <Tooltip content={<CustomTooltip />} />
-                <Legend
-                  verticalAlign="bottom"
-                  height={36}
-                  iconType="circle"
-                  wrapperStyle={{
-                    paddingTop: "20px",
-                    fontSize: "12px",
-                    fontWeight: "500",
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-      </motion.div>
-
       {/* Debt Payoff Progress - Enhanced Gauge View */}
       <motion.div
         initial="hidden"

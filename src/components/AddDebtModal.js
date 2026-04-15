@@ -21,25 +21,44 @@ const AddDebtModal = ({ isOpen, onClose, onSubmit }) => {
   const [formData, setFormData] = useState({
     name: "",
     total_amount: "",
-    paid_amount: "0",
+    total_installments: "",
+    paid_installments: "0",
     installment_value: "",
     due_date: "",
   });
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
+  const handleChange = (field, value) => {
+    let newForm = { ...formData, [field]: value };
+    if (field === "total_amount" || field === "total_installments") {
+      const total = parseFloat(newForm.total_amount) || 0;
+      const installments = parseInt(newForm.total_installments) || 0;
+      if (total > 0 && installments > 0) {
+        newForm.installment_value = (total / installments).toFixed(2);
+      }
+    }
+    setFormData(newForm);
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
+    const instValue = parseFloat(formData.installment_value) || 0;
+    const pInst = parseInt(formData.paid_installments) || 0;
+    
     onSubmit({
       name: formData.name,
       total_amount: parseFloat(formData.total_amount),
-      paid_amount: parseFloat(formData.paid_amount),
-      installment_value: parseFloat(formData.installment_value),
+      total_installments: parseInt(formData.total_installments) || 1,
+      paid_installments: pInst,
+      paid_amount: pInst * instValue,
+      installment_value: instValue,
       due_date: formData.due_date,
     });
     setFormData({
       name: "",
       total_amount: "",
-      paid_amount: "0",
+      total_installments: "",
+      paid_installments: "0",
       installment_value: "",
       due_date: "",
     });
@@ -108,7 +127,7 @@ const AddDebtModal = ({ isOpen, onClose, onSubmit }) => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
                 Valor Total
@@ -123,19 +142,36 @@ const AddDebtModal = ({ isOpen, onClose, onSubmit }) => {
                   step="0.01"
                   required
                   value={formData.total_amount}
-                  onChange={(e) =>
-                    setFormData({ ...formData, total_amount: e.target.value })
-                  }
+                  onChange={(e) => handleChange("total_amount", e.target.value)}
                   className="bg-white/5 border border-white/10 text-white placeholder:text-white/20 focus:border-destructive focus:ring-4 focus:ring-destructive/10 rounded-2xl h-14 pl-12 pr-4 w-full transition-all outline-none font-mono font-bold"
                   placeholder="0.00"
-                  data-testid="debt-total-input"
                 />
               </div>
             </div>
 
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
-                Total Já Pago
+                Qtd. Total de Parcelas
+              </label>
+              <div className="relative">
+                <Target
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-primary"
+                  size={18}
+                />
+                <input
+                  type="number"
+                  required
+                  value={formData.total_installments}
+                  onChange={(e) => handleChange("total_installments", e.target.value)}
+                  className="bg-white/5 border border-white/10 text-white placeholder:text-white/20 focus:border-destructive focus:ring-4 focus:ring-destructive/10 rounded-2xl h-14 pl-12 pr-4 w-full transition-all outline-none font-mono font-bold"
+                  placeholder="Ex: 12"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
+                Parcelas Pagas
               </label>
               <div className="relative">
                 <Wallet
@@ -144,15 +180,11 @@ const AddDebtModal = ({ isOpen, onClose, onSubmit }) => {
                 />
                 <input
                   type="number"
-                  step="0.01"
                   required
-                  value={formData.paid_amount}
-                  onChange={(e) =>
-                    setFormData({ ...formData, paid_amount: e.target.value })
-                  }
+                  value={formData.paid_installments}
+                  onChange={(e) => handleChange("paid_installments", e.target.value)}
                   className="bg-white/5 border border-white/10 text-white placeholder:text-white/20 focus:border-destructive focus:ring-4 focus:ring-destructive/10 rounded-2xl h-14 pl-12 pr-4 w-full transition-all outline-none font-mono font-bold"
-                  placeholder="0.00"
-                  data-testid="debt-paid-input"
+                  placeholder="Ex: 0"
                 />
               </div>
             </div>
@@ -171,15 +203,9 @@ const AddDebtModal = ({ isOpen, onClose, onSubmit }) => {
                   step="0.01"
                   required
                   value={formData.installment_value}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      installment_value: e.target.value,
-                    })
-                  }
+                  onChange={(e) => handleChange("installment_value", e.target.value)}
                   className="bg-white/5 border border-white/10 text-white placeholder:text-white/20 focus:border-destructive focus:ring-4 focus:ring-destructive/10 rounded-2xl h-14 pl-12 pr-4 w-full transition-all outline-none font-mono font-bold"
                   placeholder="0.00"
-                  data-testid="debt-installment-input"
                 />
               </div>
             </div>

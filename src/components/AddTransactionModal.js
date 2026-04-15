@@ -199,43 +199,28 @@ const AddTransactionModal = ({ isOpen, onClose, onSubmit }) => {
               <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-1">
                 Status Inicial
               </label>
-              <div className="relative">
-                <select
-                  value={formData.status}
-                  onChange={(e) =>
-                    setFormData({ ...formData, status: e.target.value })
-                  }
-                  className="w-full h-[3.5rem] bg-white/5 border border-white/10 rounded-2xl px-4 text-white appearance-none outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all cursor-pointer"
+              <div className="grid grid-cols-2 gap-3 h-[3.5rem]">
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, status: 'pending' })}
+                  className={`rounded-2xl border transition-all flex justify-center items-center gap-2 font-bold text-xs uppercase tracking-tight ${formData.status === 'pending' ? 'bg-destructive/20 border-destructive text-destructive shadow-[0_0_15px_rgba(244,63,94,0.15)]' : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'}`}
                 >
-                  <option value="pending" className="bg-[#0f172a]">
-                    Pendente
-                  </option>
-                  <option value="paid" className="bg-[#0f172a]">
-                    Pago
-                  </option>
-                </select>
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
-                  <svg
-                    width="12"
-                    height="12"
-                    viewBox="0 0 12 12"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M2.5 4.5L6 8L9.5 4.5"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </div>
+                  <div className={`w-2 h-2 rounded-full ${formData.status === 'pending' ? 'bg-destructive' : 'bg-white/20'}`} />
+                  Pendente
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, status: 'paid' })}
+                  className={`rounded-2xl border transition-all flex justify-center items-center gap-2 font-bold text-xs uppercase tracking-tight ${formData.status === 'paid' ? 'bg-primary/20 border-primary text-primary shadow-[0_0_15px_rgba(34,197,94,0.15)]' : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'}`}
+                >
+                  <div className={`w-2 h-2 rounded-full ${formData.status === 'paid' ? 'bg-primary' : 'bg-white/20'}`} />
+                  Pago
+                </button>
               </div>
             </div>
 
             <div
-              className="flex items-center gap-4 bg-white/5 border border-white/10 rounded-2xl px-5 h-[3.5rem] hover:bg-white/[0.08] transition-all cursor-pointer group"
+              className={`flex items-center gap-4 border rounded-2xl px-5 h-[3.5rem] transition-all cursor-pointer group ${formData.is_fixed ? "bg-primary/10 border-primary" : "bg-white/5 border-white/10 hover:bg-white/[0.08]"}`}
               onClick={() =>
                 setFormData({ ...formData, is_fixed: !formData.is_fixed })
               }
@@ -246,7 +231,7 @@ const AddTransactionModal = ({ isOpen, onClose, onSubmit }) => {
                     className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${
                       formData.is_fixed
                         ? "bg-primary border-primary"
-                        : "border-white/20 group-hover:border-white/40"
+                        : "border-white/20 group-hover:border-white/40 bg-white/5"
                     }`}
                   >
                     {formData.is_fixed && (
@@ -254,7 +239,7 @@ const AddTransactionModal = ({ isOpen, onClose, onSubmit }) => {
                     )}
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-xs font-bold text-white leading-none">
+                    <span className={`text-xs font-bold leading-none transition-colors ${formData.is_fixed ? "text-primary" : "text-white"}`}>
                       Despesa Fixa
                     </span>
                     <span className="text-[9px] text-muted-foreground uppercase font-black mt-1 tracking-wider">
@@ -265,7 +250,7 @@ const AddTransactionModal = ({ isOpen, onClose, onSubmit }) => {
                 <Repeat
                   size={18}
                   className={`transition-colors ${
-                    formData.is_fixed ? "text-primary" : "text-white/20"
+                    formData.is_fixed ? "text-primary" : "text-white/20 group-hover:text-white/40"
                   }`}
                 />
               </div>

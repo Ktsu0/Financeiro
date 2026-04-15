@@ -7,6 +7,8 @@ import {
   Wallet,
   TrendingUp,
   CalendarDays,
+  Repeat,
+  Check,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import {
@@ -22,6 +24,7 @@ const AddIncomeModal = ({ isOpen, onClose, onSubmit }) => {
     name: "",
     value: "",
     date: "",
+    is_fixed: false,
   });
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
@@ -31,11 +34,13 @@ const AddIncomeModal = ({ isOpen, onClose, onSubmit }) => {
       name: formData.name,
       value: parseFloat(formData.value),
       date: formData.date,
+      is_fixed: formData.is_fixed,
     });
     setFormData({
       name: "",
       value: "",
       date: "",
+      is_fixed: false,
     });
   };
 
@@ -184,6 +189,43 @@ const AddIncomeModal = ({ isOpen, onClose, onSubmit }) => {
                   </Popover>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <div
+            className={`flex items-center gap-4 border rounded-2xl px-5 h-[3.5rem] transition-all cursor-pointer group ${formData.is_fixed ? "bg-blue-500/10 border-blue-500" : "bg-white/5 border-white/10 hover:bg-white/[0.08]"}`}
+            onClick={() =>
+              setFormData({ ...formData, is_fixed: !formData.is_fixed })
+            }
+          >
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${
+                    formData.is_fixed
+                      ? "bg-blue-500 border-blue-500"
+                      : "border-white/20 group-hover:border-white/40 bg-white/5"
+                  }`}
+                >
+                  {formData.is_fixed && (
+                    <Check size={14} className="text-white stroke-[3]" />
+                  )}
+                </div>
+                <div className="flex flex-col">
+                  <span className={`text-xs font-bold leading-none transition-colors ${formData.is_fixed ? "text-blue-500" : "text-white"}`}>
+                    Receita Recorrente
+                  </span>
+                  <span className="text-[9px] text-muted-foreground uppercase font-black mt-1 tracking-wider">
+                    Renova todos os meses 🔄
+                  </span>
+                </div>
+              </div>
+              <Repeat
+                size={18}
+                className={`transition-colors ${
+                  formData.is_fixed ? "text-blue-500" : "text-white/20 group-hover:text-white/40"
+                }`}
+              />
             </div>
           </div>
 

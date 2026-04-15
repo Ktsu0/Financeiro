@@ -13,6 +13,7 @@ import {
   Calculator,
   RotateCcw,
   Copy,
+  Repeat,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatCurrency } from "../utils";
@@ -24,6 +25,7 @@ const FinancialGrid = React.memo(
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedIds, setSelectedIds] = useState(new Set());
     const [statusFilter, setStatusFilter] = useState("all"); // "all", "paid", "pending"
+    const [typeFilter, setTypeFilter] = useState("all"); // "all", "fixed", "normal"
 
     // Filtered data based on search and status
     const filteredExpenses = useMemo(() => {
@@ -35,9 +37,14 @@ const FinancialGrid = React.memo(
         const matchesStatus =
           statusFilter === "all" || exp.status === statusFilter;
 
-        return matchesSearch && matchesStatus;
+        const matchesType = 
+          typeFilter === "all" || 
+          (typeFilter === "fixed" && exp.is_fixed) ||
+          (typeFilter === "normal" && !exp.is_fixed);
+
+        return matchesSearch && matchesStatus && matchesType;
       });
-    }, [expenses, searchTerm, statusFilter]);
+    }, [expenses, searchTerm, statusFilter, typeFilter]);
 
     const totalSelected = useMemo(() => {
       return Array.from(selectedIds).reduce((sum, id) => {
@@ -114,12 +121,45 @@ const FinancialGrid = React.memo(
               />
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2 justify-end">
+              <button
+                onClick={() =>
+                  setTypeFilter(typeFilter === "fixed" ? "all" : "fixed")
+                }
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all ${
+                  typeFilter === "fixed"
+                    ? "bg-purple-500/20 border-purple-500"
+                    : "bg-white/5 border-white/5 opacity-50 hover:opacity-100"
+                }`}
+              >
+                <Repeat size={14} className={typeFilter === "fixed" ? "text-purple-500" : "text-white/50"} />
+                <span className="text-[10px] font-bold uppercase text-white tracking-wider">
+                  Fixas
+                </span>
+              </button>
+              <button
+                onClick={() =>
+                  setTypeFilter(typeFilter === "normal" ? "all" : "normal")
+                }
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all ${
+                  typeFilter === "normal"
+                    ? "bg-blue-500/20 border-blue-500"
+                    : "bg-white/5 border-white/5 opacity-50 hover:opacity-100"
+                }`}
+              >
+                <div className={`w-2 h-2 rounded-full ${typeFilter === "normal" ? "bg-blue-500" : "bg-white/50"}`} />
+                <span className="text-[10px] font-bold uppercase text-white tracking-wider">
+                  Avulsas
+                </span>
+              </button>
+
+              <div className="w-[1px] h-auto bg-white/10 mx-1 hidden sm:block"></div>
+
               <button
                 onClick={() =>
                   setStatusFilter(statusFilter === "paid" ? "all" : "paid")
                 }
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all ${
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all ${
                   statusFilter === "paid"
                     ? "bg-primary/20 border-primary"
                     : "bg-white/5 border-white/5 opacity-50 hover:opacity-100"
@@ -134,7 +174,7 @@ const FinancialGrid = React.memo(
                 onClick={() =>
                   setStatusFilter(statusFilter === "pending" ? "all" : "pending")
                 }
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all ${
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all ${
                   statusFilter === "pending"
                     ? "bg-destructive/20 border-destructive"
                     : "bg-white/5 border-white/5 opacity-50 hover:opacity-100"
@@ -194,9 +234,9 @@ const FinancialGrid = React.memo(
         {/* Mobile View */}
         <div className="md:hidden space-y-4">
           {filteredExpenses.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10 bg-white/5 rounded-2xl border border-dashed border-white/10 opacity-50">
+            <div className="flex flex-col items-center justify-center py-10 bg-white/5 rounded-2xl border border-dashed border-white/10 opacity-50 text-center w-full">
               <Search size={24} className="text-muted-foreground mb-2" />
-              <p className="text-muted-foreground text-xs font-bold uppercase">
+              <p className="text-muted-foreground text-xs font-bold uppercase text-center w-full">
                 Nenhum resultado
               </p>
             </div>
@@ -224,9 +264,18 @@ const FinancialGrid = React.memo(
                           <Square size={18} />
                         )}
                       </div>
-                      <p className="text-sm font-bold text-white">
-                        {expense.name}
-                      </p>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-bold text-white">
+                          {expense.name}
+                        </p>
+                        {expense.is_fixed && (
+                          <span title="Despesa Fixa" className="text-[8px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-sm uppercase font-black tracking-widest leading-none flex items-center gap-1">
+                            <Repeat size={8} /> Fixa
+                          </span>
+                        )}
+                      </div>
+                    </div>
                     </div>
                     <div className="flex items-center gap-2">
                        {onCloneExpense && (
@@ -284,9 +333,9 @@ const FinancialGrid = React.memo(
             <tbody>
               {filteredExpenses.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="p-8 text-center opacity-40">
-                    <p className="text-sm font-bold uppercase tracking-widest">
-                      Nada encontrado para "{searchTerm}"
+                  <td colSpan="6" className="p-16 text-center opacity-40">
+                    <p className="text-sm font-bold uppercase tracking-widest text-center">
+                      Nenhum resultado encontrado
                     </p>
                   </td>
                 </tr>
@@ -328,9 +377,16 @@ const FinancialGrid = React.memo(
                           />
                         ) : (
                           <div>
-                            <p className="text-sm font-bold text-white leading-none mb-1">
-                              {expense.name}
-                            </p>
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="text-sm font-bold text-white leading-none">
+                                {expense.name}
+                              </p>
+                              {expense.is_fixed && (
+                                <span title="Despesa Fixa" className="text-[8px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-sm uppercase font-black tracking-widest leading-none flex items-center gap-1">
+                                  <Repeat size={8} /> Fixa
+                                </span>
+                              )}
+                            </div>
                             <p className="text-[9px] uppercase font-black text-white/30 tracking-tight">
                               {expense.category}
                             </p>

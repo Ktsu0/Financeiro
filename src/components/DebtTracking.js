@@ -12,17 +12,37 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { formatCurrency } from "../utils";
 
-const DebtTracking = React.memo(({ debts, onUpdateDebt, onDeleteDebt }) => {
+const DebtTracking = React.memo(({ debts, onUpdateDebt, onDeleteDebt, currentMonth }) => {
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
+  const [showHistory, setShowHistory] = useState(false);
+
+  const activeDebts = debts.filter(d => !d.completed_month || d.completed_month >= currentMonth);
+  const historyDebts = debts.filter(d => d.completed_month && d.completed_month < currentMonth);
+  
+  const displayedDebts = showHistory ? historyDebts : activeDebts;
 
   const handleEdit = (debt) => {
     setEditingId(debt.id);
-    setEditForm(debt);
+    const instVal = Number(debt.installment_value) || 0;
+    const inferredTotalInstallments = debt.total_installments || (instVal > 0 ? Math.ceil(debt.total_amount / instVal) : 0) || 0;
+    const inferredPaidInstallments = debt.paid_installments || (instVal > 0 ? Math.floor((debt.paid_amount || 0) / instVal) : 0) || 0;
+    
+    setEditForm({
+      ...debt,
+      total_installments: inferredTotalInstallments,
+      paid_installments: inferredPaidInstallments
+    });
   };
 
   const handleSave = () => {
-    onUpdateDebt(editingId, editForm);
+    let finalUpdate = { ...editForm };
+    if (finalUpdate.paid_amount < finalUpdate.total_amount) {
+       finalUpdate.completed_month = null;
+    } else if (finalUpdate.paid_amount >= finalUpdate.total_amount && !finalUpdate.completed_month) {
+       finalUpdate.completed_month = currentMonth;
+    }
+    onUpdateDebt(editingId, finalUpdate);
     setEditingId(null);
   };
 
@@ -32,11 +52,23 @@ const DebtTracking = React.memo(({ debts, onUpdateDebt, onDeleteDebt }) => {
   };
 
   const handlePayInstallment = (debt) => {
-    const newPaidAmount = Math.min(
-      debt.paid_amount + debt.installment_value,
-      debt.total_amount,
-    );
-    onUpdateDebt(debt.id, { paid_amount: newPaidAmount });
+    const tInstallments = debt.total_installments || Math.ceil(debt.total_amount / debt.installment_value);
+    const newPaidInstallments = Math.min((debt.paid_installments || 0) + 1, tInstallments);
+    const newPaidAmount = newPaidInstallments * debt.installment_value;
+    
+    // Safety check up to total_amount
+    const finalPaidAmount = Math.min(newPaidAmount, debt.total_amount);
+
+    const updates = { 
+      paid_installments: newPaidInstallments,
+      paid_amount: finalPaidAmount
+    };
+
+    if (finalPaidAmount >= debt.total_amount && !debt.completed_month) {
+      updates.completed_month = currentMonth;
+    }
+
+    onUpdateDebt(debt.id, updates);
   };
 
   const calculateProgress = (debt) => {
@@ -45,36 +77,53 @@ const DebtTracking = React.memo(({ debts, onUpdateDebt, onDeleteDebt }) => {
 
   return (
     <div className="glass-card rounded-3xl p-8" data-testid="debt-tracking">
-      <div className="flex items-center gap-3 mb-8">
-        <div className="p-3 bg-destructive/10 rounded-2xl">
-          <Target className="text-destructive" size={24} />
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-3">
+          <div className="p-3 bg-destructive/10 rounded-2xl">
+            <Target className="text-destructive" size={24} />
+          </div>
+          <div>
+            <h2 className="text-2xl font-extrabold tracking-tight font-heading text-white">
+              Gestão de Dívidas
+            </h2>
+            <p className="text-sm text-muted-foreground font-body">
+              Acompanhe seu progresso de liquidação
+            </p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-2xl font-extrabold tracking-tight font-heading text-white">
-            Gestão de Dívidas
-          </h2>
-          <p className="text-sm text-muted-foreground font-body">
-            Acompanhe seu progresso de liquidação
-          </p>
+        
+        <div className="flex gap-2">
+           <button
+             onClick={() => setShowHistory(false)}
+             className={`px-4 py-2 rounded-xl border transition-all text-xs font-bold uppercase tracking-wider ${!showHistory ? 'bg-destructive/20 text-destructive border-destructive' : 'bg-white/5 text-white/50 border-white/5 hover:opacity-100'}`}
+           >
+             Ativas
+           </button>
+           <button
+             onClick={() => setShowHistory(true)}
+             className={`px-4 py-2 rounded-xl border transition-all text-xs font-bold uppercase tracking-wider flex items-center gap-2 ${showHistory ? 'bg-primary/20 text-primary border-primary' : 'bg-white/5 text-white/50 border-white/5 hover:opacity-100'}`}
+           >
+             Histórico {historyDebts.length > 0 && <span className="bg-primary text-black px-1.5 py-0.5 rounded-full text-[10px]">{historyDebts.length}</span>}
+           </button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {debts.length === 0 ? (
-          <div className="md:col-span-2 py-16 text-center bg-white/5 rounded-3xl border border-dashed border-white/10 flex flex-col items-center justify-center">
+        {displayedDebts.length === 0 ? (
+          <div className="md:col-span-2 py-16 text-center bg-white/5 rounded-3xl border border-dashed border-white/10 flex flex-col items-center justify-center w-full">
             <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mb-4">
               <Target size={32} className="text-destructive opacity-50" />
             </div>
             <p
-              className="text-muted-foreground font-medium"
+              className="text-muted-foreground font-medium text-center"
               data-testid="no-debts-message"
             >
-              Você não possui dívidas registradas no momento.
+              {showHistory ? "Seu histórico de dívidas liquidadas está vazio." : "Você não possui dívidas ativas no momento."}
             </p>
           </div>
         ) : (
           <AnimatePresence>
-            {debts.map((debt, index) => (
+            {displayedDebts.map((debt, index) => (
               <motion.div
                 layout
                 initial={{ opacity: 0, scale: 0.95 }}
@@ -190,11 +239,48 @@ const DebtTracking = React.memo(({ debts, onUpdateDebt, onDeleteDebt }) => {
                   </div>
                   <div className="space-y-1">
                     <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground/60">
-                      Restante
+                      Qtd Parcelas
                     </p>
-                    <p className="text-sm font-black font-mono text-destructive">
-                      {formatCurrency(debt.total_amount - debt.paid_amount)}
+                    {editingId === debt.id ? (
+                      <input
+                        type="number"
+                        value={editForm.total_installments || ""}
+                        onChange={(e) =>
+                          setEditForm({
+                            ...editForm,
+                            total_installments: parseInt(e.target.value) || 0,
+                          })
+                        }
+                        className="bg-background border border-border text-white text-xs rounded-md h-7 px-2 w-full"
+                      />
+                    ) : (
+                      <p className="text-sm font-black font-mono text-white/80">
+                        {debt.total_installments || (debt.installment_value > 0 ? Math.ceil(debt.total_amount / debt.installment_value) : 0)}x
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground/60">
+                      Pagas
                     </p>
+                    {editingId === debt.id ? (
+                      <input
+                        type="number"
+                        value={editForm.paid_installments || ""}
+                        onChange={(e) =>
+                          setEditForm({
+                            ...editForm,
+                            paid_installments: parseInt(e.target.value) || 0,
+                            paid_amount: (parseInt(e.target.value) || 0) * editForm.installment_value,
+                          })
+                        }
+                        className="bg-background border border-border text-white text-xs rounded-md h-7 px-2 w-full"
+                      />
+                    ) : (
+                      <p className="text-sm font-black font-mono text-destructive">
+                        {debt.paid_installments || 0} parcelas
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-1 col-span-2">
                     <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground/60">
