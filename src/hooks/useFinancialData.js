@@ -437,8 +437,11 @@ export const useFinancialData = () => {
         const currentInst = Number(debt.paid_installments) || 0;
         const totalInst = debt.total_installments || (instVal > 0 ? Math.ceil(debt.total_amount / instVal) : 0) || 0;
 
+        if (currentPaid >= Number(debt.total_amount)) return debt;
+
         return {
           ...debt,
+          due_date: debt.due_date ? incrementDateMonth(debt.due_date) : debt.due_date,
           paid_installments: Math.min(currentInst + 1, totalInst),
           paid_amount: Math.min(
             currentPaid + instVal,
