@@ -454,7 +454,7 @@ export const useFinancialData = () => {
         debts: updatedDebts,
         automation_meta: {
            ...prev.automation_meta,
-           last_processed_month: targetMonthKey
+           last_processed_month: format(targetMonthDate, "yyyy-MM")
         }
       };
     });
