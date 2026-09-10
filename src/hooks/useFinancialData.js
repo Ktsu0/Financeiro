@@ -9,6 +9,8 @@ const STORAGE_KEY = "@financeiro_v1_data";
 const CLOUD_URL_KEY = "@financeiro_cloud_url";
 const PET_VISIBILITY_KEY = "@financeiro_show_pet";
 const GOOGLE_SCRIPT_TOKEN = process.env.REACT_APP_GOOGLE_APPS_SCRIPT_TOKEN;
+const TOMBSTONE_MAX_AGE_DAYS = 90;
+const EPSILON = 0.01;
 
 const initialData = {
   expenses: [],
@@ -19,10 +21,133 @@ const initialData = {
   }
 };
 
+// Sinaliza (uma vez, no carregamento) se os dados locais existiam mas não puderam
+// ser descriptografados (ex.: a chave de criptografia mudou entre deploys).
+let didDecryptFailOnLoad = false;
+
+// --- Helpers de sincronização (fetch-merge-push por registro) ---
+
+const getUpdatedAt = (item) =>
+  item.updated_at || item.created_at || "1970-01-01T00:00:00.000Z";
+
+// Preenche updated_at em registros antigos (criados antes desse campo existir)
+const backfillTimestamps = (arr = []) =>
+  arr.map((item) =>
+    item.updated_at ? item : { ...item, updated_at: getUpdatedAt(item) },
+  );
+
+// Mescla duas coleções pelo id, mantendo sempre a versão com updated_at mais recente
+const mergeArraysById = (mine = [], theirs = []) => {
+  const map = new Map();
+  mine.forEach((item) => map.set(item.id, item));
+  theirs.forEach((item) => {
+    const existing = map.get(item.id);
+    if (!existing || getUpdatedAt(item) > getUpdatedAt(existing)) {
+      map.set(item.id, item);
+    }
+  });
+  return Array.from(map.values());
+};
+
+// Rede de segurança contra duplicidade: se dois dispositivos, sem terem sincronizado
+// ainda entre si, criarem cada um sua própria cópia da mesma despesa/receita fixa
+// projetada para o mesmo mês (ex.: automação do dia 5 rodando em paralelo), mantém
+// só a criada primeiro e tombstona as demais.
+const dedupeFixedProjections = (items, dateKey) => {
+  const groups = new Map();
+  items.forEach((item) => {
+    if (item.is_fixed && !item.deleted_at) {
+      const d = parseDate(item[dateKey]);
+      if (d) {
+        const key = `${item.name}|${d.getFullYear()}-${d.getMonth()}`;
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(item);
+      }
+    }
+  });
+
+  const tombstoneIds = new Set();
+  groups.forEach((group) => {
+    if (group.length > 1) {
+      const sorted = [...group].sort((a, b) =>
+        (a.created_at || "").localeCompare(b.created_at || ""),
+      );
+      sorted.slice(1).forEach((dup) => tombstoneIds.add(dup.id));
+    }
+  });
+
+  if (tombstoneIds.size === 0) return items;
+
+  const now = new Date().toISOString();
+  return items.map((item) =>
+    tombstoneIds.has(item.id) ? { ...item, deleted_at: now } : item,
+  );
+};
+
+const normalizeCloudData = (raw) => ({
+  expenses: backfillTimestamps(raw.expenses || []),
+  incomes: backfillTimestamps(raw.incomes || []),
+  debts: backfillTimestamps(raw.debts || []),
+  automation_meta: raw.automation_meta || initialData.automation_meta,
+});
+
+// Mescla o estado local com o estado da nuvem, registro a registro, em vez de
+// sobrescrever o blob inteiro (que é o que causava perda de dados quando duas
+// pessoas mexiam ao mesmo tempo).
+const mergeData = (mine, theirs) => {
+  const expenses = dedupeFixedProjections(
+    mergeArraysById(mine.expenses, theirs.expenses),
+    "due_date",
+  );
+  const incomes = dedupeFixedProjections(
+    mergeArraysById(mine.incomes || [], theirs.incomes || []),
+    "date",
+  );
+  const debts = mergeArraysById(mine.debts, theirs.debts);
+
+  const mineMonth = mine.automation_meta?.last_processed_month || "";
+  const theirMonth = theirs.automation_meta?.last_processed_month || "";
+
+  return {
+    expenses,
+    incomes,
+    debts,
+    automation_meta: {
+      last_processed_month: mineMonth > theirMonth ? mineMonth : theirMonth,
+    },
+  };
+};
+
+// Remove tombstones (registros excluídos) antigos para o payload não crescer para sempre
+const purgeOldTombstones = (data) => {
+  const cutoff = Date.now() - TOMBSTONE_MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
+  const keep = (item) =>
+    !item.deleted_at || new Date(item.deleted_at).getTime() > cutoff;
+  return {
+    ...data,
+    expenses: data.expenses.filter(keep),
+    incomes: (data.incomes || []).filter(keep),
+    debts: data.debts.filter(keep),
+  };
+};
+
 export const useFinancialData = () => {
   const [data, setData] = useState(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     const decrypted = saved ? decryptData(saved) : null;
+
+    if (saved && !decrypted) {
+      // Dados existem mas não puderam ser lidos (ex.: chave de criptografia trocada).
+      // Em vez de deixar o app reiniciar do zero e sobrescrever o backup em silêncio,
+      // guarda uma cópia do texto cifrado original para possível recuperação.
+      didDecryptFailOnLoad = true;
+      try {
+        localStorage.setItem(`${STORAGE_KEY}_corrupt_backup_${Date.now()}`, saved);
+      } catch {
+        // localStorage cheio ou indisponível: nada mais a fazer aqui
+      }
+    }
+
     const baseData = decrypted || initialData;
     // Se não tiver automation_meta (usuário antigo), define como o mês atual
     // Isso evita que o sistema tente "corrigir" o mês atual que o usuário já mexeu
@@ -31,8 +156,20 @@ export const useFinancialData = () => {
         last_processed_month: format(new Date(), "yyyy-MM")
       };
     }
+    baseData.expenses = backfillTimestamps(baseData.expenses);
+    baseData.debts = backfillTimestamps(baseData.debts);
+    baseData.incomes = backfillTimestamps(baseData.incomes || []);
     return baseData;
   });
+
+  useEffect(() => {
+    if (didDecryptFailOnLoad) {
+      toast.error("Não foi possível carregar seus dados salvos neste dispositivo.", {
+        description:
+          "Uma cópia de segurança dos dados criptografados foi preservada no armazenamento local. Fale com quem administra o site se precisar recuperá-los.",
+      });
+    }
+  }, []);
 
   const [cloudUrl, setCloudUrl] = useState(
     () => localStorage.getItem(CLOUD_URL_KEY) || "",
@@ -53,7 +190,31 @@ export const useFinancialData = () => {
     isSyncingRef.current = isSyncing;
   }, [isSyncing]);
 
-  const { expenses, debts, incomes } = data;
+  // Mantém uma ref sempre atualizada dos dados para uso em callbacks que
+  // precisam ficar com identidade estável (ex.: o polling de sync não pode
+  // ser recriado a cada edição, senão o intervalo de 30s nunca dispara).
+  const dataRef = useRef(data);
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
+
+  // As coleções "visíveis" escondem tombstones (registros excluídos, mas
+  // mantidos internamente para propagar a exclusão entre dispositivos).
+  const expenses = useMemo(
+    () => data.expenses.filter((e) => !e.deleted_at),
+    [data.expenses],
+  );
+  const debts = useMemo(
+    () => data.debts.filter((d) => !d.deleted_at),
+    [data.debts],
+  );
+  const incomes = useMemo(
+    () => (data.incomes || []).filter((i) => !i.deleted_at),
+    [data.incomes],
+  );
+
+  const previousDataHashRef = useRef("");
+  const initialLoadDoneRef = useRef(false);
 
   // Cloud Actions
   const syncToCloud = useCallback(
@@ -66,7 +227,33 @@ export const useFinancialData = () => {
       }
       try {
         setIsSyncing(true);
-        const payload = { ...data, token: GOOGLE_SCRIPT_TOKEN };
+
+        // Busca o estado atual da nuvem e mescla registro a registro antes de
+        // enviar, para não apagar mudanças feitas por outro dispositivo desde
+        // a última sincronização (last-write-wins do blob inteiro era a causa
+        // da perda de dados quando duas pessoas mexiam ao mesmo tempo).
+        let base = dataRef.current;
+        try {
+          const response = await axios.get(targetUrl);
+          if (
+            response.data &&
+            (response.data.expenses ||
+              response.data.debts ||
+              response.data.incomes)
+          ) {
+            const cloudData = normalizeCloudData(response.data);
+            base = purgeOldTombstones(mergeData(dataRef.current, cloudData));
+            setData(base);
+          }
+        } catch (fetchErr) {
+          console.warn(
+            "Não foi possível buscar dados atuais da nuvem antes de enviar:",
+            fetchErr,
+          );
+        }
+
+        previousDataHashRef.current = JSON.stringify(base);
+        const payload = { ...base, token: GOOGLE_SCRIPT_TOKEN };
 
         await axios.post(targetUrl, JSON.stringify(payload), {
           headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -77,11 +264,8 @@ export const useFinancialData = () => {
         setIsSyncing(false);
       }
     },
-    [cloudUrl, data],
+    [cloudUrl],
   );
-
-  const previousDataHashRef = useRef("");
-  const initialLoadDoneRef = useRef(false);
 
   const loadFromCloud = useCallback(
     async (targetUrl = cloudUrl, silent = false) => {
@@ -96,16 +280,15 @@ export const useFinancialData = () => {
             response.data.debts ||
             response.data.incomes)
         ) {
-          const newData = response.data;
-          // Garantir metadados no item vindo da nuvem
-          if (!newData.automation_meta) {
-            newData.automation_meta = initialData.automation_meta;
-          }
-          const newDataString = JSON.stringify(newData);
+          const cloudData = normalizeCloudData(response.data);
+          const merged = purgeOldTombstones(
+            mergeData(dataRef.current, cloudData),
+          );
+          const mergedString = JSON.stringify(merged);
 
-          if (newDataString !== previousDataHashRef.current) {
-            previousDataHashRef.current = newDataString;
-            setData(newData);
+          if (mergedString !== previousDataHashRef.current) {
+            previousDataHashRef.current = mergedString;
+            setData(merged);
             if (!silent) toast.success("Dados sincronizados com a nuvem!");
           }
           initialLoadDoneRef.current = true;
@@ -138,7 +321,6 @@ export const useFinancialData = () => {
     ) {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
       saveTimeoutRef.current = setTimeout(() => {
-        previousDataHashRef.current = currentDataString;
         syncToCloud();
       }, 2000);
     }
@@ -272,11 +454,13 @@ export const useFinancialData = () => {
 
   // Actions
   const addExpense = useCallback((expenseData) => {
+    const now = getNowISO();
     const newExpense = {
       ...expenseData,
       id: generateId(),
       status: expenseData.status || "pending",
-      created_at: getNowISO(),
+      created_at: now,
+      updated_at: now,
     };
     setData((prev) => ({
       ...prev,
@@ -290,26 +474,32 @@ export const useFinancialData = () => {
     setData((prev) => ({
       ...prev,
       expenses: prev.expenses.map((exp) =>
-        exp.id === id ? { ...exp, ...updates } : exp,
+        exp.id === id ? { ...exp, ...updates, updated_at: getNowISO() } : exp,
       ),
     }));
     toast.success("Despesa atualizada!");
-  }, []);
+  }, [getNowISO]);
 
   const deleteExpense = useCallback((id) => {
     setData((prev) => ({
       ...prev,
-      expenses: prev.expenses.filter((exp) => exp.id !== id),
+      expenses: prev.expenses.map((exp) =>
+        exp.id === id
+          ? { ...exp, deleted_at: getNowISO(), updated_at: getNowISO() }
+          : exp,
+      ),
     }));
     toast.success("Despesa excluída!");
-  }, []);
+  }, [getNowISO]);
 
   const addDebt = useCallback((debtData) => {
+    const now = getNowISO();
     const newDebt = {
       ...debtData,
       id: generateId(),
       paid_amount: Number(debtData.paid_amount) || 0,
-      created_at: getNowISO(),
+      created_at: now,
+      updated_at: now,
     };
     setData((prev) => ({
       ...prev,
@@ -322,24 +512,32 @@ export const useFinancialData = () => {
   const updateDebt = useCallback((id, updates) => {
     setData((prev) => ({
       ...prev,
-      debts: prev.debts.map((d) => (d.id === id ? { ...d, ...updates } : d)),
+      debts: prev.debts.map((d) =>
+        d.id === id ? { ...d, ...updates, updated_at: getNowISO() } : d,
+      ),
     }));
     toast.success("Dívida atualizada!");
-  }, []);
+  }, [getNowISO]);
 
   const deleteDebt = useCallback((id) => {
     setData((prev) => ({
       ...prev,
-      debts: prev.debts.filter((d) => d.id !== id),
+      debts: prev.debts.map((d) =>
+        d.id === id
+          ? { ...d, deleted_at: getNowISO(), updated_at: getNowISO() }
+          : d,
+      ),
     }));
     toast.success("Dívida excluída!");
-  }, []);
+  }, [getNowISO]);
 
   const addIncome = useCallback((incomeData) => {
+    const now = getNowISO();
     const newIncome = {
       ...incomeData,
       id: generateId(),
-      created_at: getNowISO(),
+      created_at: now,
+      updated_at: now,
     };
     setData((prev) => ({
       ...prev,
@@ -353,19 +551,23 @@ export const useFinancialData = () => {
     setData((prev) => ({
       ...prev,
       incomes: prev.incomes.map((inc) =>
-        inc.id === id ? { ...inc, ...updates } : inc,
+        inc.id === id ? { ...inc, ...updates, updated_at: getNowISO() } : inc,
       ),
     }));
     toast.success("Receita atualizada!");
-  }, []);
+  }, [getNowISO]);
 
   const deleteIncome = useCallback((id) => {
     setData((prev) => ({
       ...prev,
-      incomes: prev.incomes.filter((inc) => inc.id !== id),
+      incomes: prev.incomes.map((inc) =>
+        inc.id === id
+          ? { ...inc, deleted_at: getNowISO(), updated_at: getNowISO() }
+          : inc,
+      ),
     }));
     toast.success("Receita excluída!");
-  }, []);
+  }, [getNowISO]);
 
   // Core Projection Logic (reusable for manual and auto)
   const projectItems = useCallback((sourceMonthDate, targetMonthDate) => {
@@ -376,20 +578,21 @@ export const useFinancialData = () => {
     };
 
     setData((prev) => {
+      const now = getNowISO();
       const nextMonthExpenses = [];
       prev.expenses.forEach((exp) => {
+        if (exp.deleted_at) return;
         const expDate = parseDate(exp.due_date);
 
-        const isSourceMonth = expDate && 
-          expDate.getMonth() === sourceMonthDate.getMonth() && 
-          expDate.getFullYear() === sourceMonthDate.getFullYear();
-          expDate.getMonth() === sourceMonthDate.getMonth() && 
+        const isSourceMonth = expDate &&
+          expDate.getMonth() === sourceMonthDate.getMonth() &&
           expDate.getFullYear() === sourceMonthDate.getFullYear();
 
         if (exp.is_fixed && isSourceMonth) {
           // Check if it already exists in target month to avoid duplicates
-          const exists = prev.expenses.some(e => 
-            e.name === exp.name && 
+          const exists = prev.expenses.some(e =>
+            !e.deleted_at &&
+            e.name === exp.name &&
             parseDate(e.due_date)?.getMonth() === targetMonthDate.getMonth() &&
             parseDate(e.due_date)?.getFullYear() === targetMonthDate.getFullYear()
           );
@@ -400,7 +603,8 @@ export const useFinancialData = () => {
               id: generateId(),
               due_date: incrementDateMonth(exp.due_date),
               status: "pending",
-              created_at: getNowISO(),
+              created_at: now,
+              updated_at: now,
             });
           }
         }
@@ -408,14 +612,16 @@ export const useFinancialData = () => {
 
       const nextMonthIncomes = [];
       (prev.incomes || []).forEach((inc) => {
+        if (inc.deleted_at) return;
         const incDate = parseDate(inc.date);
-        const isSourceMonth = incDate && 
-          incDate.getMonth() === sourceMonthDate.getMonth() && 
+        const isSourceMonth = incDate &&
+          incDate.getMonth() === sourceMonthDate.getMonth() &&
           incDate.getFullYear() === sourceMonthDate.getFullYear();
 
         if (inc.is_fixed && isSourceMonth) {
-          const exists = (prev.incomes || []).some(i => 
-            i.name === inc.name && 
+          const exists = (prev.incomes || []).some(i =>
+            !i.deleted_at &&
+            i.name === inc.name &&
             parseDate(i.date)?.getMonth() === targetMonthDate.getMonth() &&
             parseDate(i.date)?.getFullYear() === targetMonthDate.getFullYear()
           );
@@ -425,28 +631,45 @@ export const useFinancialData = () => {
               ...inc,
               id: generateId(),
               date: incrementDateMonth(inc.date),
-              created_at: getNowISO(),
+              created_at: now,
+              updated_at: now,
             });
           }
         }
       });
 
+      const targetMonthKey = format(targetMonthDate, "yyyy-MM");
+
       const updatedDebts = prev.debts.map((debt) => {
+        if (debt.deleted_at) return debt;
+
         const instVal = Number(debt.installment_value) || 0;
         const currentPaid = Number(debt.paid_amount) || 0;
         const currentInst = Number(debt.paid_installments) || 0;
-        const totalInst = debt.total_installments || (instVal > 0 ? Math.ceil(debt.total_amount / instVal) : 0) || 0;
+        const totalAmount = Number(debt.total_amount) || 0;
+        const totalInst = debt.total_installments || (instVal > 0 ? Math.ceil(totalAmount / instVal) : 0) || 0;
 
-        if (currentPaid >= Number(debt.total_amount)) return debt;
+        // Considera concluída tanto por valor (com margem de 1 centavo para
+        // absorver arredondamento de parcela) quanto por contagem de parcelas,
+        // já que dívidas cujo total não divide exato pelas parcelas (ex.: 100
+        // em 3x de 33,33) nunca bateriam exatamente o valor total.
+        if (currentPaid >= totalAmount - EPSILON || (totalInst > 0 && currentInst >= totalInst)) {
+          return debt;
+        }
+
+        const newInst = Math.min(currentInst + 1, totalInst || currentInst + 1);
+        const isNowComplete = totalInst > 0 && newInst >= totalInst;
+        const newPaidAmount = isNowComplete
+          ? totalAmount
+          : Math.min(currentPaid + instVal, totalAmount);
 
         return {
           ...debt,
           due_date: debt.due_date ? incrementDateMonth(debt.due_date) : debt.due_date,
-          paid_installments: Math.min(currentInst + 1, totalInst),
-          paid_amount: Math.min(
-            currentPaid + instVal,
-            Number(debt.total_amount) || 0,
-          ),
+          paid_installments: newInst,
+          paid_amount: newPaidAmount,
+          completed_month: isNowComplete ? targetMonthKey : debt.completed_month,
+          updated_at: now,
         };
       });
 
@@ -457,7 +680,7 @@ export const useFinancialData = () => {
         debts: updatedDebts,
         automation_meta: {
            ...prev.automation_meta,
-           last_processed_month: format(targetMonthDate, "yyyy-MM")
+           last_processed_month: targetMonthKey
         }
       };
     });
@@ -475,15 +698,17 @@ export const useFinancialData = () => {
     toast.success("Lançamentos projetados e visão alterada para o próximo mês!");
   }, [selectedMonth, projectItems]);
 
-  // Automation Effect: Triggered every 5th of the month
+  // Automation Effect: Triggered every 5th of the month.
+  // Reavalia periodicamente (não só uma vez no mount) para cobrir o caso de a
+  // aba ficar aberta e atravessar a virada do dia 5 sem recarregar a página.
   useEffect(() => {
     const automator = () => {
       const now = new Date();
       const currentDay = now.getDate();
       const currentMonthKey = format(now, "yyyy-MM");
-      
-      const lastUpdate = data.automation_meta?.last_processed_month;
-      
+
+      const lastUpdate = dataRef.current.automation_meta?.last_processed_month;
+
       // Se for dia 5 ou mais e ainda não processou o mês atual
       if (currentDay >= 5 && lastUpdate !== currentMonthKey) {
         const lastMonthDate = addMonths(now, -1);
@@ -495,9 +720,14 @@ export const useFinancialData = () => {
     };
 
     // Pequeno delay para garantir que os dados iniciais carregaram (especialmente da nuvem)
-    const timer = setTimeout(automator, 3000);
-    return () => clearTimeout(timer);
-  }, [data.automation_meta, projectItems]);
+    const initialTimer = setTimeout(automator, 3000);
+    // Reavalia a cada 15 minutos, cobrindo sessões abertas por muito tempo
+    const interval = setInterval(automator, 15 * 60 * 1000);
+    return () => {
+      clearTimeout(initialTimer);
+      clearInterval(interval);
+    };
+  }, [projectItems]);
 
   const exportData = useCallback(() => {
     const dataStr = JSON.stringify(data, null, 2);
@@ -520,6 +750,9 @@ export const useFinancialData = () => {
         if (!parsed.automation_meta) {
           parsed.automation_meta = initialData.automation_meta;
         }
+        parsed.expenses = backfillTimestamps(parsed.expenses);
+        parsed.debts = backfillTimestamps(parsed.debts || []);
+        parsed.incomes = backfillTimestamps(parsed.incomes || []);
         setData(parsed);
         toast.success("Dados importados!");
         return true;
@@ -559,12 +792,12 @@ export const useFinancialData = () => {
       rollMonth,
       cloneExpense: useCallback((id, targetMonthKey) => {
         setData((prev) => {
-          const expense = prev.expenses.find((e) => e.id === id);
+          const expense = prev.expenses.find((e) => e.id === id && !e.deleted_at);
           if (!expense) return prev;
 
           const [y, m] = targetMonthKey.split("-");
           const targetDate = new Date(parseInt(y), parseInt(m) - 1, 1);
-          
+
           let newDateStr = expense.due_date;
           const d = parseDate(expense.due_date);
           if (d) {
@@ -573,7 +806,8 @@ export const useFinancialData = () => {
           }
 
           // Verificação se a despesa já foi replicada no mês
-          const alreadyExists = prev.expenses.some(e => 
+          const alreadyExists = prev.expenses.some(e =>
+             !e.deleted_at &&
              e.name === expense.name &&
              parseDate(e.due_date)?.getMonth() === targetDate.getMonth() &&
              parseDate(e.due_date)?.getFullYear() === targetDate.getFullYear()
@@ -584,12 +818,14 @@ export const useFinancialData = () => {
              return prev;
           }
 
+          const now = getNowISO();
           const newExpense = {
             ...expense,
             id: generateId(),
             due_date: newDateStr,
             status: "pending",
-            created_at: getNowISO()
+            created_at: now,
+            updated_at: now,
           };
 
           setTimeout(() => toast.success("Despesa replicada para o mês selecionado!"), 100);

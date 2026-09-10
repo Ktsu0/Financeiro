@@ -8,7 +8,6 @@ import {
   CalendarRange,
   Zap,
 } from "lucide-react";
-import { format } from "date-fns";
 import { useFinancialData } from "../hooks/useFinancialData";
 
 import Header from "./Header";
@@ -287,7 +286,7 @@ const Dashboard = () => {
                   onUpdateExpense={actions.updateExpense}
                   onDeleteExpense={actions.deleteExpense}
                   onCloneExpense={(id) =>
-                    actions.cloneExpense(id, format(new Date(), "yyyy-MM"))
+                    actions.cloneExpense(id, selectedMonth)
                   }
                 />
               </motion.div>

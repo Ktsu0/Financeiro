@@ -31,8 +31,8 @@ const FinancialGrid = React.memo(
     const filteredExpenses = useMemo(() => {
       return expenses.filter((exp) => {
         const matchesSearch =
-          exp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          exp.category.toLowerCase().includes(searchTerm.toLowerCase());
+          (exp.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (exp.category || "").toLowerCase().includes(searchTerm.toLowerCase());
 
         const matchesStatus =
           statusFilter === "all" || exp.status === statusFilter;

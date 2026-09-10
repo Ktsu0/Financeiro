@@ -15,10 +15,17 @@ import { formatCurrency } from "../utils";
 const Sidebar = React.memo(({ expenses, debts, summary }) => {
   const COLORS = ["#22c55e", "#f43f5e", "#3b82f6", "#eab308", "#a855f7"];
 
-  // Calculate debt progress
+  // Calculate debt progress. Usa o mesmo valor clampado por dívida que o
+  // resto do app (Header/summary.total_debt), em vez de somar total_amount e
+  // paid_amount separadamente — se uma dívida antiga tiver paid_amount maior
+  // que total_amount (dado corrompido/importado), a soma direta distorceria
+  // o progresso geral em vez de tratar isso como "quitada".
   const { totalDebtAmount, totalPaidAmount, debtProgress } = useMemo(() => {
-    const tDebt = debts.reduce((sum, d) => sum + d.total_amount, 0);
-    const tPaid = debts.reduce((sum, d) => sum + d.paid_amount, 0);
+    const tDebt = debts.reduce((sum, d) => sum + (Number(d.total_amount) || 0), 0);
+    const tPaid = debts.reduce(
+      (sum, d) => sum + Math.min(Number(d.paid_amount) || 0, Number(d.total_amount) || 0),
+      0,
+    );
     const progress = tDebt > 0 ? (tPaid / tDebt) * 100 : 0;
     return {
       totalDebtAmount: tDebt,

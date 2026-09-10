@@ -17,9 +17,9 @@ const ExpenseCalculatorModal = ({ isOpen, onClose, expenses }) => {
   const [selectedIds, setSelectedIds] = useState(new Set());
 
   const filteredExpenses = useMemo(() => {
-    return expenses.filter(exp => 
-      exp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      exp.category.toLowerCase().includes(searchTerm.toLowerCase())
+    return expenses.filter(exp =>
+      (exp.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (exp.category || "").toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [expenses, searchTerm]);
 

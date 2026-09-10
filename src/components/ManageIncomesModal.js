@@ -115,7 +115,7 @@ const ManageIncomesModal = ({
                             onChange={(e) =>
                               setEditForm({
                                 ...editForm,
-                                value: parseFloat(e.target.value),
+                                value: parseFloat(e.target.value) || 0,
                               })
                             }
                             className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-sm text-white w-24"

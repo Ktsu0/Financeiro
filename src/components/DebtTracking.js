@@ -35,12 +35,33 @@ const DebtTracking = React.memo(({ debts, onUpdateDebt, onDeleteDebt, currentMon
     });
   };
 
+  const EPSILON = 0.01;
+
   const handleSave = () => {
     let finalUpdate = { ...editForm };
-    if (finalUpdate.paid_amount < finalUpdate.total_amount) {
+
+    // Recalcula paid_amount a partir dos valores finais do formulário (parcelas
+    // pagas x valor da parcela), em vez de confiar no que foi setado durante o
+    // onChange de um campo isolado — evita inconsistência se o usuário editar
+    // "Parcelas Pagas" e depois "Valor da Parcela" (ou vice-versa).
+    const totalAmount = Number(finalUpdate.total_amount) || 0;
+    const installmentValue = Number(finalUpdate.installment_value) || 0;
+    const paidInstallments = Number(finalUpdate.paid_installments) || 0;
+    const totalInstallments = Number(finalUpdate.total_installments) || 0;
+    finalUpdate.paid_amount = Math.min(
+      paidInstallments * installmentValue,
+      totalAmount,
+    );
+
+    const isComplete =
+      finalUpdate.paid_amount >= totalAmount - EPSILON ||
+      (totalInstallments > 0 && paidInstallments >= totalInstallments);
+
+    if (isComplete) {
+       finalUpdate.paid_amount = totalAmount;
+       if (!finalUpdate.completed_month) finalUpdate.completed_month = currentMonth;
+    } else {
        finalUpdate.completed_month = null;
-    } else if (finalUpdate.paid_amount >= finalUpdate.total_amount && !finalUpdate.completed_month) {
-       finalUpdate.completed_month = currentMonth;
     }
     onUpdateDebt(editingId, finalUpdate);
     setEditingId(null);
@@ -54,17 +75,21 @@ const DebtTracking = React.memo(({ debts, onUpdateDebt, onDeleteDebt, currentMon
   const handlePayInstallment = (debt) => {
     const tInstallments = debt.total_installments || Math.ceil(debt.total_amount / debt.installment_value);
     const newPaidInstallments = Math.min((debt.paid_installments || 0) + 1, tInstallments);
-    const newPaidAmount = newPaidInstallments * debt.installment_value;
-    
-    // Safety check up to total_amount
-    const finalPaidAmount = Math.min(newPaidAmount, debt.total_amount);
 
-    const updates = { 
+    // Considera concluída por contagem de parcelas também, não só por valor:
+    // quando o total não divide exato pelas parcelas (ex.: 100 em 3x de
+    // 33,33), a soma nunca bateria exatamente o total_amount.
+    const isComplete = tInstallments > 0 && newPaidInstallments >= tInstallments;
+    const finalPaidAmount = isComplete
+      ? debt.total_amount
+      : Math.min(newPaidInstallments * debt.installment_value, debt.total_amount);
+
+    const updates = {
       paid_installments: newPaidInstallments,
       paid_amount: finalPaidAmount
     };
 
-    if (finalPaidAmount >= debt.total_amount && !debt.completed_month) {
+    if (isComplete && !debt.completed_month) {
       updates.completed_month = currentMonth;
     }
 
@@ -226,7 +251,7 @@ const DebtTracking = React.memo(({ debts, onUpdateDebt, onDeleteDebt, currentMon
                         onChange={(e) =>
                           setEditForm({
                             ...editForm,
-                            total_amount: parseFloat(e.target.value),
+                            total_amount: parseFloat(e.target.value) || 0,
                           })
                         }
                         className="bg-background border border-border text-white text-xs rounded-md h-7 px-2 w-full"
@@ -271,7 +296,6 @@ const DebtTracking = React.memo(({ debts, onUpdateDebt, onDeleteDebt, currentMon
                           setEditForm({
                             ...editForm,
                             paid_installments: parseInt(e.target.value) || 0,
-                            paid_amount: (parseInt(e.target.value) || 0) * editForm.installment_value,
                           })
                         }
                         className="bg-background border border-border text-white text-xs rounded-md h-7 px-2 w-full"
@@ -294,7 +318,7 @@ const DebtTracking = React.memo(({ debts, onUpdateDebt, onDeleteDebt, currentMon
                         onChange={(e) =>
                           setEditForm({
                             ...editForm,
-                            installment_value: parseFloat(e.target.value),
+                            installment_value: parseFloat(e.target.value) || 0,
                           })
                         }
                         className="bg-background border border-border text-white text-xs rounded-md h-7 px-2 w-full"
